@@ -1,6 +1,6 @@
 {
   "name": "baton",
   "version": "0.1.0",
-  "description": "Pass work between agents: distilled, inheritable briefs. Requires `npm i -g @sriinnu/baton`.",
+  "description": "Pass work between agents: distilled, inheritable briefs. Requires the baton CLI on PATH (clone github.com/sriinnu/baton, then `npm link`).",
   "author": { "name": "sriinnu" }
 }
