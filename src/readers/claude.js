@@ -4,9 +4,8 @@ import path from 'node:path';
 const SKIP = /^<(system-reminder|local-command|command-name|command-message|task-notification)/;
 const text = (c) => (typeof c === 'string' ? c : (c || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n'));
 
-export function read(file, from = 0) {
-  const lines = fs.readFileSync(file, 'utf8').split('\n').filter(Boolean);
-  const isSub = file.includes(`${path.sep}subagents${path.sep}`);
+export function parse(content, from = 0, isSub = false) {
+  const lines = content.split('\n').filter(Boolean);
   const turns = [];
   let cwd;
   lines.forEach((l, n) => {
@@ -32,9 +31,15 @@ export function read(file, from = 0) {
       }
     }
   });
+  return { turns, lines: lines.length, cwd };
+}
+
+// --- node-only ---
+export function read(file, from = 0) {
+  const isSub = file.includes(`${path.sep}subagents${path.sep}`);
   const subDir = path.join(file.replace(/\.jsonl$/, ''), 'subagents');
   const subagents = fs.existsSync(subDir)
     ? fs.readdirSync(subDir).filter((f) => f.endsWith('.jsonl')).map((f) => ({ id: f.replace(/^agent-|\.jsonl$/g, ''), path: path.join(subDir, f) }))
     : [];
-  return { turns, lines: lines.length, cwd, subagents };
+  return { ...parse(fs.readFileSync(file, 'utf8'), from, isSub), subagents };
 }

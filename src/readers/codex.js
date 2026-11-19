@@ -3,8 +3,8 @@ import fs from 'node:fs';
 // Record types (codex-cli 0.128): session_meta{id,cwd,source.subagent.thread_spawn.parent_thread_id},
 // event_msg/user_message{message}, event_msg/agent_message{message},
 // response_item/function_call{name,arguments}, response_item/function_call_output{output}.
-export function read(file, from = 0) {
-  const lines = fs.readFileSync(file, 'utf8').split('\n').filter(Boolean);
+export function parse(content, from = 0) {
+  const lines = content.split('\n').filter(Boolean);
   const turns = [];
   let cwd, parent;
   lines.forEach((l, n) => {
@@ -22,5 +22,10 @@ export function read(file, from = 0) {
       turns.push({ role: 'tool', tool: p.name, text: a.cmd || a.command || p.name, files });
     } else if (r.type === 'response_item' && p.type === 'function_call_output') turns.push({ role: 'tool', tool: 'result', text: String(p.output ?? '') });
   });
-  return { turns, lines: lines.length, cwd, parent, subagents: [] };
+  return { turns, lines: lines.length, cwd, parent };
+}
+
+// --- node-only ---
+export function read(file, from = 0) {
+  return { ...parse(fs.readFileSync(file, 'utf8'), from), subagents: [] };
 }

@@ -1,0 +1,14 @@
+{
+  "name": "sriinnu-baton",
+  "owner": {
+    "name": "sriinnu"
+  },
+  "plugins": [
+    {
+      "name": "baton",
+      "source": "./plugin",
+      "description": "Pass work between agents: distilled, inheritable briefs. Requires `npm i -g @sriinnu/baton`."
+    }
+  ],
+  "description": "Plugins by sriinnu: baton passes work between AI coding agents via distilled briefs."
+}

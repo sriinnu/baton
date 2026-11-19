@@ -1,0 +1,12 @@
+**baton**
+- [[Home]]
+- [[Getting-Started]]
+- [[Commands]]
+- [[The-Brief]]
+- [[Inheritance]]
+- [[Switching-Models]]
+- [[Agents-and-Readers]]
+- [[Hooks-and-Sync]]
+- [[Safety]]
+- [[Contributing-a-Reader]]
+- [[FAQ]]

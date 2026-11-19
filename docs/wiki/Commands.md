@@ -1,0 +1,18 @@
+# Commands
+
+| Command | Does |
+|---|---|
+| `init` | create `.baton/` |
+| `handover [--name n] [--parent ref]` | new brief (alias of `write`) |
+| `takeover <ref> [--name n]` | show, run the arrival check, start a continuation if clean |
+| `gist <ref>` | the brief plus drift since written (alias of `show`) |
+| `check <ref> [--no-run]` | arrival check alone |
+| `from <session-id> \| --path f [--agent a]` | brief from a past session (idempotent) |
+| `child <ref> --task "…" [--agent-id id]` | brief for a subagent |
+| `fold <child>` | fold a finished child into its parent |
+| `sync <ref>` / `sync --hook` | refresh prose with the cheap model |
+| `ls` | lineage tree |
+
+`<ref>` = brief id, name, session id, or id prefix.
+
+Exit codes of `check` / `takeover`: **0** ok, **2** drift (tell the human first), **1** brief unfilled or `verify:` failed.

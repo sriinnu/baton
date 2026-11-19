@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>baton playground</title>
+<style>
+:root { --bg:#fafaf7; --fg:#1c1b19; --mut:#6b675f; --card:#fff; --line:#e4e1d8; --acc:#b4540a; --code:#f3f1ea; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#17160f; --fg:#ece9df; --mut:#9a958a; --card:#1f1e16; --line:#33312a; --acc:#e8a05a; --code:#14130d; } }
+:root[data-theme="dark"] { --bg:#17160f; --fg:#ece9df; --mut:#9a958a; --card:#1f1e16; --line:#33312a; --acc:#e8a05a; --code:#14130d; }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.5 system-ui, sans-serif; }
+main { max-width:1100px; margin:0 auto; padding:24px 16px 48px; }
+h1 { font-size:1.6rem; margin:0 0 4px; } h1 span { color:var(--acc); }
+p.lead { color:var(--mut); margin:0 0 20px; max-width:60ch; }
+.grid { display:grid; gap:16px; grid-template-columns:1fr; } @media (min-width:860px) { .grid { grid-template-columns:1fr 1fr; } }
+.card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; min-width:0; }
+label { display:block; font-size:.8rem; color:var(--mut); margin:10px 0 4px; text-transform:uppercase; letter-spacing:.04em; }
+textarea, input { width:100%; background:var(--code); color:var(--fg); border:1px solid var(--line); border-radius:6px; padding:8px; font:13px/1.45 ui-monospace, Menlo, monospace; }
+textarea { height:260px; resize:vertical; }
+.row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:6px; }
+button { background:var(--card); color:var(--fg); border:1px solid var(--line); border-radius:6px; padding:6px 12px; font:inherit; font-size:.9rem; cursor:pointer; }
+button:hover, button[aria-selected="true"] { border-color:var(--acc); color:var(--acc); }
+pre { background:var(--code); border:1px solid var(--line); border-radius:6px; padding:10px; margin:8px 0 0; overflow:auto; max-height:420px; font:13px/1.45 ui-monospace, Menlo, monospace; white-space:pre-wrap; word-break:break-word; }
+.stat { margin-top:10px; font-size:.85rem; color:var(--mut); } .stat b { color:var(--fg); }
+footer { margin-top:24px; color:var(--mut); font-size:.85rem; }
+code { background:var(--code); padding:1px 5px; border-radius:4px; }
+</style>
+</head>
+<body>
+<main>
+  <h1><span>baton</span> playground</h1>
+  <p class="lead">Paste a Claude Code or Codex session (jsonl) or any text. See what baton distils, the brief the next agent would read, and the brief a subagent would inherit. Runs entirely in your browser; nothing is uploaded.</p>
+  <div class="grid">
+    <section class="card">
+      <div class="row">
+        <button id="s-claude">Claude sample</button><button id="s-codex">Codex sample</button><button id="clear">Clear</button>
+      </div>
+      <label for="in">Session transcript</label>
+      <textarea id="in" spellcheck="false" placeholder="Paste a .jsonl session, or plain text…"></textarea>
+      <label for="mission">Mission (root brief, one paragraph)</label>
+      <input id="mission" value="Ship the login fix without breaking SSO.">
+      <label for="task">Subtask for a child agent</label>
+      <input id="task" value="Write regression tests for auth.js">
+      <div class="stat" id="stat"></div>
+    </section>
+    <section class="card">
+      <div class="row" role="tablist">
+        <button role="tab" data-t="brief" aria-selected="true">Brief</button>
+        <button role="tab" data-t="extract" aria-selected="false">Extract</button>
+        <button role="tab" data-t="child" aria-selected="false">Child brief</button>
+        <button id="copy" style="margin-left:auto">Copy</button>
+      </div>
+      <pre id="out"></pre>
+      <div class="stat" id="hint"></div>
+    </section>
+  </div>
+  <footer>The same parsing, redaction and brief code as the <code>baton</code> CLI, bundled. In the real tool <code>## State</code> is measured from git and the prose is filled by an agent or a cheap model. <code>npm i -g @sriinnu/baton</code></footer>
+</main>
+<script>
+/*CORE*/
+const SAMPLES = /*SAMPLES*/;
+const $ = (s) => document.querySelector(s);
+let tab = 'brief', views = {};
+const HINTS = {
+  brief: 'What the next agent reads. <!-- fill --> marks what the outgoing agent (or the sync model) writes.',
+  extract: 'Mechanical facts only: first goal, files, commands, errors, last user turns. Secrets are redacted.',
+  child: 'Mission verbatim + one-line lineage + its own task. It never sees the history.',
+};
+function detect(t) {
+  try { const r = JSON.parse(t.split('\n').find(Boolean) || ''); return r.type === 'session_meta' ? 'codex' : (r.type || r.message) ? 'claude' : 'plain'; } catch { return 'plain'; }
+}
+function render() {
+  const raw = $('#in').value, agent = detect(raw);
+  const r = !raw.trim() ? { turns: [] } : agent === 'codex' ? parseCodex(raw) : agent === 'claude' ? parseClaude(raw) : { turns: [{ role: 'user', text: raw }] };
+  const sk = skeleton(r.turns), mission = $('#mission').value.trim(), task = $('#task').value.trim() || '(describe the subtask)';
+  const state = 'branch: main\nhead: (measured from git by the real CLI)\ndirty: none';
+  const now = new Date().toISOString().slice(0, 16) + 'Z';
+  const brief = scaffold({ meta: { id: 'root', name: 'demo', agent, parent: null, mission: 'root', generated: now }, skeleton: sk, state, mission: mission || undefined });
+  const parsed = parseBrief(brief); delete parsed.sections.Extract;
+  const root = serializeBrief(parsed);
+  const child = serializeBrief({ meta: { id: 'child1', agent: 'any', parent: 'root', mission: 'root', generated: now }, sections: {
+    Mission: mission || '<!-- fill -->', Lineage: '- root (demo) — ' + (sk.firstGoal.split('\n')[0].slice(0, 100) || 'no goal yet'), Task: task,
+    'Report back': 'Before this session ends, update this brief: fill Done, Decisions (with why), Dead ends. The parent folds it back with `baton fold child1`.', State: state } });
+  const ex = renderExtract(sk);
+  views = { brief: root, extract: ex, child };
+  $('#out').textContent = raw.trim() ? views[tab] : 'Load a sample or paste a session.';
+  const n = (ex.match(/\[REDACTED\]/g) || []).length, t = (s) => Math.ceil(s.length / 4);
+  $('#stat').innerHTML = raw.trim() ? `detected <b>${agent}</b> · ${r.turns.length} turns · ${n} secret${n === 1 ? '' : 's'} redacted · input ≈ <b>${t(raw)}</b> tokens → child brief ≈ <b>${t(child)}</b> tokens (rough: chars ÷ 4)` : '';
+  $('#hint').textContent = HINTS[tab];
+}
+document.querySelectorAll('[role=tab]').forEach((b) => b.onclick = () => { tab = b.dataset.t; document.querySelectorAll('[role=tab]').forEach((x) => x.setAttribute('aria-selected', x === b)); render(); });
+$('#s-claude').onclick = () => { $('#in').value = SAMPLES.claude; render(); };
+$('#s-codex').onclick = () => { $('#in').value = SAMPLES.codex; render(); };
+$('#clear').onclick = () => { $('#in').value = ''; render(); };
+$('#copy').onclick = async () => { try { await navigator.clipboard.writeText(views[tab]); $('#copy').textContent = 'Copied'; setTimeout(() => $('#copy').textContent = 'Copy', 1200); } catch {} };
+['#in', '#mission', '#task'].forEach((s) => $(s).addEventListener('input', render));
+$('#in').value = SAMPLES.claude; render();
+</script>
+</body>
+</html>

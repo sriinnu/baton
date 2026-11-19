@@ -1,7 +1,7 @@
 {
   "hooks": {
-    "Stop": [{ "hooks": [{ "type": "command", "command": "baton sync --hook" }] }],
-    "PreCompact": [{ "hooks": [{ "type": "command", "command": "baton sync --hook" }] }],
-    "SubagentStop": [{ "hooks": [{ "type": "command", "command": "baton sync --hook" }] }]
+    "Stop": [{ "hooks": [{ "type": "command", "command": "baton sync --hook 2>/dev/null || true" }] }],
+    "PreCompact": [{ "hooks": [{ "type": "command", "command": "baton sync --hook 2>/dev/null || true" }] }],
+    "SubagentStop": [{ "hooks": [{ "type": "command", "command": "baton sync --hook 2>/dev/null || true" }] }]
   }
 }

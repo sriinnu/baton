@@ -28,7 +28,7 @@ Then wire up your agent (all optional; the CLI works alone):
 | Agent | Setup |
 |---|---|
 | Any | paste [`rules/AGENTS.snippet.md`](rules/AGENTS.snippet.md) into `AGENTS.md` / `CLAUDE.md` / `GEMINI.md` |
-| Claude Code | install `plugin/`: skills `/baton:handover`, `/baton:takeover`, `/baton:switch`, plus hooks |
+| Claude Code | `/plugin install baton --marketplace sriinnu/baton`: skills `/baton:handover`, `/baton:takeover`, `/baton:switch`, plus hooks (hooks do nothing unless `baton` is on PATH and the repo has `.baton/`) |
 | Codex | copy `codex/*.md` to `~/.codex/prompts/`; in `~/.codex/config.toml` set `notify = ["baton", "sync", "--hook"]` |
 
 ## Use
@@ -125,7 +125,11 @@ or `{ "runner": "codex", "model": "<mini model>" }`. The model can never change 
 
 ## Status
 
-v0.1. Session readers: Claude Code (`~/.claude/projects`), Codex (`~/.codex/sessions`), generic `--path`. Another agent is a ~30-line reader in `src/readers/`. Covered by 40 tests against fixture transcripts and a fake model; the live Claude Code plugin, hooks and Codex `notify` wiring are still being exercised.
+v0.1. Session readers: Claude Code (`~/.claude/projects`), Codex (`~/.codex/sessions`), generic `--path`. Another agent is a ~30-line reader in `src/readers/`. Covered by 41 tests against fixture transcripts and a fake model; the live Claude Code plugin, hooks and Codex `notify` wiring are still being exercised.
+
+## Playground
+
+Open `playground/index.html` in a browser (no install, nothing uploaded). Docs: `docs/wiki/`.
 
 ## Develop
 
