@@ -8,7 +8,7 @@ export function measure(cwd) {
   const head = out(cwd, ['rev-parse', 'HEAD'], null);
   const br = out(cwd, ['symbolic-ref', '--short', '-q', 'HEAD'], null);
   let dirty = [];
-  try { dirty = run(cwd, ['status', '--porcelain', '-z']).split('\0').filter(Boolean).map((l) => l.slice(3)); } catch {}
+  try { const f = run(cwd, ['status', '--porcelain', '-z']).split('\0'); for (let i = 0; i < f.length; i++) { if (!f[i]) continue; dirty.push(f[i].slice(3)); if (/^[RC]/.test(f[i])) i++; } } catch {} // renames carry a second NUL field (the old path)
   return { repo: true, branch: br ?? (head ? `detached at ${head.slice(0, 7)}` : null), head, diffStat: out(cwd, ['diff', '--stat', 'HEAD']), dirty };
 }
 

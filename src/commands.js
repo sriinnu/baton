@@ -80,7 +80,7 @@ export const COMMANDS = {
     const pb = parseBrief(store.readBrief(cwd, c.parent) || '');
     const first = (s) => (s || '').split('\n').find((l) => l.trim() && !l.startsWith('<!--')) || '(nothing reported)';
     const line = `- ${c.id}${c.name ? ` (${c.name})` : ''} — ${first(cb.sections.Done).replace(/^- /, '').slice(0, 120)}`;
-    pb.sections.Lineage = (pb.sections.Lineage || '').split('\n').filter((l) => !l.startsWith(`- ${c.id}`)).concat(line).filter(Boolean).join('\n');
+    pb.sections.Lineage = (pb.sections.Lineage || '').split('\n').filter((l) => !l.startsWith(`- ${c.id} `)).concat(line).filter(Boolean).join('\n');
     const have = pb.sections.Decisions || '';
     const add = (cb.sections.Decisions || '').split('\n').filter((l) => l.trim() && !l.startsWith('<!--') && !have.includes(l));
     if (add.length) pb.sections.Decisions = [have, ...add].filter(Boolean).join('\n');
@@ -105,8 +105,8 @@ export const COMMANDS = {
   },
 
   check(cwd, a, [ref]) {
-    const r = check(cwd, ref, { run: !a['no-run'] });
-    return { out: r.ok ? 'ok' : r.lines.join('\n'), code: r.drift ? 2 : r.ok ? 0 : 1 };
+    const r = check(cwd, ref, { run: !!a.run });
+    return { out: r.ok ? ['ok', r.note].filter(Boolean).join('\n') : r.lines.join('\n'), code: r.drift ? 2 : r.ok ? 0 : 1 };
   },
 };
 

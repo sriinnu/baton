@@ -45,7 +45,7 @@ baton handover --name auth-fix     # writes the brief; the agent fills the prose
 baton takeover auth-fix --name auth-fix-2
 ```
 
-`takeover` shows the brief, then **checks it against reality before you touch anything**: has git moved, is the working tree what the brief says, does the brief's `verify:` command still pass. Clean → your continuation brief is created (same mission, parent recorded). Drift → exit 2; report to the human first. Even family washes their feet before entering.
+`takeover` shows the brief, then **checks it against reality before you touch anything**: has git moved, is the working tree what the brief says, does the brief's `verify:` command still pass (shown, and run only with `--run`). Clean → your continuation brief is created (same mission, parent recorded). Drift → exit 2; report to the human first. Even family washes their feet before entering.
 
 **Changing model mid-task** (`/baton:switch`):
 
@@ -108,7 +108,7 @@ or `{ "runner": "codex", "model": "<mini model>" }`. The model can never change 
 | `handover [--name n] [--parent ref]` | leaving: new brief (alias `write`) |
 | `takeover <ref> [--name n]` | arriving: show, check, start continuation |
 | `gist <ref>` | the distilled brief + drift since written (alias `show`) |
-| `check <ref> [--no-run]` | the sanity check alone; exit 0 ok, 2 drift, 1 unfilled / verify failed |
+| `check <ref> [--run]` | the sanity check alone; exit 0 ok, 2 drift, 1 unfilled / verify failed. `verify:` runs only with `--run` (a brief can come from anywhere) |
 | `from <session-id> \| --path f` | brief from a past session |
 | `child <ref> --task "…" [--agent-id id]` | brief for a subagent / new session |
 | `fold <child>` | fold a finished child into its parent |

@@ -34,3 +34,11 @@ test('verify line survives render/parse', () => {
   const { dir } = repo();
   assert.equal(parseState(renderState(measure(dir), 'npm test')).verify, 'npm test');
 });
+
+test('renames: dirty lists the new path only', async () => {
+  const { repo } = await import('./helpers.js');
+  const { measure } = await import('../src/git.js');
+  const { dir, git } = repo();
+  git('mv', 'a.txt', 'b c.txt');
+  assert.deepEqual(measure(dir).dirty, ['b c.txt']);
+});

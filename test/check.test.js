@@ -22,12 +22,14 @@ test('new commit → DRIFT exit 2', () => {
   assert.equal(r.code, 2);
   assert.match(r.out, /HEAD moved 1 commits/);
 });
-test('failing verify command → exit 1; --no-run skips it', () => {
+test('verify runs only with --run; failure → exit 1', () => {
   const { dir } = repo(); baton(dir, ['init']);
   const p = baton(dir, ['write', '--name', 'w']).out;
   fs.writeFileSync(p, fs.readFileSync(p, 'utf8').replace(/<!-- fill[^>]*-->/g, 'x').replace(/(dirty: .*)/, '$1\nverify: false'));
-  assert.equal(baton(dir, ['check', 'w']).code, 1);
-  assert.equal(baton(dir, ['check', 'w', '--no-run']).code, 0);
+  const plain = baton(dir, ['check', 'w']);
+  assert.equal(plain.code, 0);
+  assert.match(plain.out, /verify not run: `false`/);
+  assert.equal(baton(dir, ['check', 'w', '--run']).code, 1);
 });
 test('unfilled brief → exit 1', () => {
   const { dir } = repo(); baton(dir, ['init']); baton(dir, ['write', '--name', 'w']);
