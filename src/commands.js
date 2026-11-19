@@ -53,7 +53,7 @@ export const COMMANDS = {
     const text = store.readBrief(cwd, e.id);
     if (!text) return { out: `no brief yet for ${e.id}; run \`baton from ${e.sessionId || e.id}\``, code: 1 };
     const d = drift(parseState(parseBrief(text).sections.State), measure(cwd), cwd);
-    return { out: text + (d.length ? `\n⚠ drift since brief:\n${d.map((x) => `- ${x}`).join('\n')}\n` : '') + (hasFillMarkers(text) ? '\n⚠ brief has unfilled sections (<!-- fill -->)\n' : '') };
+    return { out: text + tokenLine(e, text) + (d.length ? `\n⚠ drift since brief:\n${d.map((x) => `- ${x}`).join('\n')}\n` : '') + (hasFillMarkers(text) ? '\n⚠ brief has unfilled sections (<!-- fill -->)\n' : '') };
   },
 
   child(cwd, a, [ref]) {
@@ -64,7 +64,7 @@ export const COMMANDS = {
     const e = store.register(cwd, { id, agent: a.agent, parent: p.id, sessionId: a['agent-id'] });
     const t = parseBrief(build(cwd, { id, agent: a.agent, parent: p, sk: skeleton([]) }));
     t.sections = {
-      Mission: pb.sections.Mission, Lineage: lineageText(cwd, p), Task: a.task,
+      Mission: pb.sections.Mission, 'Read first': pb.sections['Read first'], Lineage: lineageText(cwd, p), Task: a.task,
       Decisions: pb.sections.Decisions, 'Dead ends': pb.sections['Dead ends'],
       'Report back': `Before this session ends, update this brief (${store.briefPath(cwd, id)}): fill Done, Decisions (with why), Dead ends. The parent folds it back with \`baton fold ${id}\`.`,
       State: t.sections.State,
@@ -121,6 +121,16 @@ COMMANDS.takeover = (cwd, a, [ref]) => {
   if (c.code) return { out: `${shown}\n--- check ---\n${c.out}`, code: c.code };
   return { out: `${shown}\n--- check: ok ---\ncontinuation brief: ${COMMANDS.write(cwd, { name: a.name, agent: a.agent, parent: e.id }).out}` };
 };
+
+const k = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
+// Cache reads/writes are measured from the transcript; a miss is not recorded, so none is claimed.
+function tokenLine(e, text) {
+  const brief = Math.ceil(text.length / 4);
+  let u;
+  try { u = e.sourcePath && read(e.agent, e.sourcePath, 1e9).usage; } catch {}
+  if (!u) return `\ntokens: brief ≈ ${k(brief)} (chars ÷ 4)\n`;
+  return `\ntokens: session context ≈ ${k(u.context)} · cache reads (all turns) ${k(u.read)}${u.write == null ? '' : ` · writes ${k(u.write)}`} | brief ≈ ${k(brief)} → a fresh session starts ~${Math.max(1, Math.round(u.context / brief))}x smaller\n`;
+}
 
 const stripExtract = (t) => { const b = parseBrief(t); delete b.sections.Extract; return serializeBrief(b); };
 

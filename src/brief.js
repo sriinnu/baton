@@ -1,4 +1,4 @@
-export const SECTIONS = ['Mission', 'Lineage', 'Task', 'Decisions', 'Done', 'Next', 'Dead ends', 'Open questions', 'Report back', 'Check', 'State'];
+export const SECTIONS = ['Mission', 'Read first', 'Lineage', 'Task', 'Decisions', 'Done', 'Next', 'Dead ends', 'Open questions', 'Report back', 'Check', 'State'];
 export const FILL = '<!-- fill -->';
 export const hasFillMarkers = (t) => /<!-- fill/.test(t);
 

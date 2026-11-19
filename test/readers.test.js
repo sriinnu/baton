@@ -39,3 +39,13 @@ test('generic: plain text becomes one user turn', async () => {
   assert.equal(r.turns.length, 1);
   assert.equal(r.turns[0].text, 'hello\nworld');
 });
+
+test('usage: claude dedupes per message id; codex reads token_count', async () => {
+  const { parse: c } = await import('../src/readers/claude.js');
+  const { parse: x } = await import('../src/readers/codex.js');
+  const a = (id, i, r, w) => JSON.stringify({ type: 'assistant', message: { id, content: [], usage: { input_tokens: i, cache_read_input_tokens: r, cache_creation_input_tokens: w } } });
+  assert.deepEqual(c([a('m1', 2, 100, 10), a('m1', 2, 100, 10), a('m2', 3, 150, 5)].join('\n')).usage, { context: 158, read: 250, write: 15 });
+  const tc = JSON.stringify({ type: 'event_msg', payload: { type: 'token_count', info: { total_token_usage: { cached_input_tokens: 900 }, last_token_usage: { input_tokens: 300 } } } });
+  assert.deepEqual(x(tc).usage, { context: 300, read: 900, write: null });
+  assert.equal(c('').usage, undefined);
+});

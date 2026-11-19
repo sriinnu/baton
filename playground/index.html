@@ -58,7 +58,7 @@ code { background:var(--code); padding:1px 5px; border-radius:4px; }
   <footer>The same parsing, redaction and brief code as the <code>baton</code> CLI, bundled. In the real tool <code>## State</code> is measured from git and the prose is filled by an agent or a cheap model. <code>npm i -g @sriinnu/baton</code></footer>
 </main>
 <script>
-const SECTIONS = ['Mission', 'Lineage', 'Task', 'Decisions', 'Done', 'Next', 'Dead ends', 'Open questions', 'Report back', 'Check', 'State'];
+const SECTIONS = ['Mission', 'Read first', 'Lineage', 'Task', 'Decisions', 'Done', 'Next', 'Dead ends', 'Open questions', 'Report back', 'Check', 'State'];
 const FILL = '<!-- fill -->';
 const hasFillMarkers = (t) => /<!-- fill/.test(t);
 
@@ -115,11 +115,12 @@ const renderExtract = (s) => [
   `last assistant turns:\n${(s.assistant || []).map((c) => `- ${c}`).join('\n') || '- none'}`,
 ].join('\n');
 
-function scaffold({ meta, skeleton: s, state, lineage = '', mission }) {
+function scaffold({ meta, skeleton: s, state, lineage = '', mission, readFirst = '' }) {
   return serializeBrief({
     meta,
     sections: {
       Mission: mission || `${FILL} (draft from first goal; root only)`,
+      'Read first': readFirst,
       Lineage: lineage,
       Task: FILL, Decisions: FILL, Done: FILL, Next: FILL, 'Dead ends': FILL,
       State: state,
@@ -138,11 +139,14 @@ function parseClaude(content, from = 0, isSub = false) {
   const lines = content.split('\n').filter(Boolean);
   const turns = [];
   let cwd;
+  const byMsg = new Map(); // usage repeats across a message's records: keep one per message id
   lines.forEach((l, n) => {
     let r;
     try { r = JSON.parse(l); } catch { return; }
     cwd ??= r.cwd;
-    if (n < from || (r.isSidechain && !isSub) || r.isCompactSummary || r.isMeta) return;
+    if (r.isSidechain && !isSub) return;
+    if (r.type === 'assistant' && r.message?.usage) byMsg.set(r.message.id || `n${n}`, r.message.usage);
+    if (n < from || r.isCompactSummary || r.isMeta) return;
     const c = r.message?.content;
     if (r.type === 'user') {
       if (typeof c === 'string') { if (!SKIP.test(c.trim())) turns.push({ role: 'user', text: c }); return; }
@@ -161,7 +165,10 @@ function parseClaude(content, from = 0, isSub = false) {
       }
     }
   });
-  return { turns, lines: lines.length, cwd };
+  const us = [...byMsg.values()];
+  const last = us.at(-1);
+  const usage = last && { context: (last.input_tokens || 0) + (last.cache_read_input_tokens || 0) + (last.cache_creation_input_tokens || 0), read: us.reduce((a, u) => a + (u.cache_read_input_tokens || 0), 0), write: us.reduce((a, u) => a + (u.cache_creation_input_tokens || 0), 0) };
+  return { turns, lines: lines.length, cwd, ...(usage && { usage }) };
 }
 
 
@@ -173,12 +180,13 @@ function parseClaude(content, from = 0, isSub = false) {
 function parseCodex(content, from = 0) {
   const lines = content.split('\n').filter(Boolean);
   const turns = [];
-  let cwd, parent;
+  let cwd, parent, usage;
   lines.forEach((l, n) => {
     let r;
     try { r = JSON.parse(l); } catch { return; }
     const p = r.payload || {};
     if (r.type === 'session_meta') { cwd = p.cwd; parent = p.source?.subagent?.thread_spawn?.parent_thread_id; return; }
+    if (r.type === 'event_msg' && p.type === 'token_count' && p.info) usage = { context: p.info.last_token_usage?.input_tokens || 0, read: p.info.total_token_usage?.cached_input_tokens || 0, write: null }; // codex does not report cache writes
     if (n < from) return;
     if (r.type === 'event_msg' && p.type === 'user_message') turns.push({ role: 'user', text: p.message });
     else if (r.type === 'event_msg' && p.type === 'agent_message') turns.push({ role: 'assistant', text: p.message });
@@ -189,7 +197,7 @@ function parseCodex(content, from = 0) {
       turns.push({ role: 'tool', tool: p.name, text: a.cmd || a.command || p.name, files });
     } else if (r.type === 'response_item' && p.type === 'function_call_output') turns.push({ role: 'tool', tool: 'result', text: String(p.output ?? '') });
   });
-  return { turns, lines: lines.length, cwd, parent };
+  return { turns, lines: lines.length, cwd, parent, ...(usage && { usage }) };
 }
 
 

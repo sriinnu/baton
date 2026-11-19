@@ -117,6 +117,10 @@ or `{ "runner": "codex", "model": "<mini model>" }`. The model can never change 
 
 `<ref>` is a brief id, a name, or a session id.
 
+## Worktrees
+
+All worktrees of a repo share the main checkout's `.baton/`. `takeover` in a new worktree on a new branch is fine: the check only flags history that diverged from the brief's HEAD. The brief's `## Read first` lists mission/knowledge files (`MISSION.md`, `docs/knowledge.md`, plus `readFirst` paths from `.baton/config.json`) for the next agent to read before acting. `gist` and `takeover` end with a `tokens:` line (session context, cache reads/writes from the transcript, brief size).
+
 ## Safety
 
 - Transcripts are untrusted data: never executed. API keys, tokens and private keys are redacted before anything is written or sent to a model.
@@ -125,7 +129,7 @@ or `{ "runner": "codex", "model": "<mini model>" }`. The model can never change 
 
 ## Status
 
-v0.1. Session readers: Claude Code (`~/.claude/projects`), Codex (`~/.codex/sessions`), generic `--path`. Another agent is a ~30-line reader in `src/readers/`. Covered by 41 tests against fixture transcripts and a fake model; the live Claude Code plugin, hooks and Codex `notify` wiring are still being exercised.
+v0.1. Session readers: Claude Code (`~/.claude/projects`), Codex (`~/.codex/sessions`), generic `--path`. Another agent is a ~30-line reader in `src/readers/`. Covered by 47 tests against fixture transcripts and a fake model; the live Claude Code plugin, hooks and Codex `notify` wiring are still being exercised.
 
 ## Playground
 

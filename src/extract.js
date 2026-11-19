@@ -27,11 +27,12 @@ export const renderExtract = (s) => [
   `last assistant turns:\n${(s.assistant || []).map((c) => `- ${c}`).join('\n') || '- none'}`,
 ].join('\n');
 
-export function scaffold({ meta, skeleton: s, state, lineage = '', mission }) {
+export function scaffold({ meta, skeleton: s, state, lineage = '', mission, readFirst = '' }) {
   return serializeBrief({
     meta,
     sections: {
       Mission: mission || `${FILL} (draft from first goal; root only)`,
+      'Read first': readFirst,
       Lineage: lineage,
       Task: FILL, Decisions: FILL, Done: FILL, Next: FILL, 'Dead ends': FILL,
       State: state,

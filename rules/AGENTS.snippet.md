@@ -10,7 +10,8 @@ Briefs live in `.baton/briefs/<id>.md`: distilled, never transcripts. Any agent 
 **Arriving (given a brief name, brief id or session id):**
 1. `baton takeover <ref> --name <new>`: shows the brief, checks it against git (the sanity check), then starts your continuation brief. Session id with no brief yet? It creates one to fill, then rerun.
 2. Exit 2 = drift (git moved): report it to the user before touching anything. Exit 1 = brief unfilled or verify failed: fix that first.
-3. Work from Next. Same mission; you inherit it.
+3. Read every file under `## Read first` (mission, curated knowledge) before acting. A different worktree is fine; the check only flags diverged history.
+4. Work from Next. Same mission; you inherit it.
 
 **Delegating to a subagent or new session:** `baton child <ref> --task "<its slice>" [--agent-id <id>]`, then give the agent only that brief's path. Do not paste history.
 

@@ -8,11 +8,14 @@ export function parse(content, from = 0, isSub = false) {
   const lines = content.split('\n').filter(Boolean);
   const turns = [];
   let cwd;
+  const byMsg = new Map(); // usage repeats across a message's records: keep one per message id
   lines.forEach((l, n) => {
     let r;
     try { r = JSON.parse(l); } catch { return; }
     cwd ??= r.cwd;
-    if (n < from || (r.isSidechain && !isSub) || r.isCompactSummary || r.isMeta) return;
+    if (r.isSidechain && !isSub) return;
+    if (r.type === 'assistant' && r.message?.usage) byMsg.set(r.message.id || `n${n}`, r.message.usage);
+    if (n < from || r.isCompactSummary || r.isMeta) return;
     const c = r.message?.content;
     if (r.type === 'user') {
       if (typeof c === 'string') { if (!SKIP.test(c.trim())) turns.push({ role: 'user', text: c }); return; }
@@ -31,7 +34,10 @@ export function parse(content, from = 0, isSub = false) {
       }
     }
   });
-  return { turns, lines: lines.length, cwd };
+  const us = [...byMsg.values()];
+  const last = us.at(-1);
+  const usage = last && { context: (last.input_tokens || 0) + (last.cache_read_input_tokens || 0) + (last.cache_creation_input_tokens || 0), read: us.reduce((a, u) => a + (u.cache_read_input_tokens || 0), 0), write: us.reduce((a, u) => a + (u.cache_creation_input_tokens || 0), 0) };
+  return { turns, lines: lines.length, cwd, ...(usage && { usage }) };
 }
 
 // --- node-only ---
