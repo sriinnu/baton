@@ -1,0 +1,11 @@
+{
+  "name": "@sriinnu/baton",
+  "version": "0.1.0",
+  "description": "Pass work between AI coding agents: distilled, inheritable briefs.",
+  "type": "module",
+  "bin": { "baton": "bin/baton.js" },
+  "files": ["bin", "src", "rules", "plugin", "codex"],
+  "engines": { "node": ">=20" },
+  "scripts": { "test": "node --test test/*.test.js" },
+  "license": "MIT"
+}

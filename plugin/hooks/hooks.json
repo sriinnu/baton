@@ -1,0 +1,7 @@
+{
+  "hooks": {
+    "Stop": [{ "hooks": [{ "type": "command", "command": "baton sync --hook" }] }],
+    "PreCompact": [{ "hooks": [{ "type": "command", "command": "baton sync --hook" }] }],
+    "SubagentStop": [{ "hooks": [{ "type": "command", "command": "baton sync --hook" }] }]
+  }
+}
