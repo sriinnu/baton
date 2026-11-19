@@ -19,16 +19,18 @@ test('sync fills prose, State from git, advances offset; second sync is a no-op'
   assert.ok(!t.includes('## Extract'));
   assert.match(baton(dir, ['sync', 's'], env(home)).out, /nothing new/);
 });
-test('model changing Mission is rejected; brief unchanged', () => {
+test('model changing Mission is ignored; Mission and State stay ours', () => {
   const { dir, home } = setup();
   baton(dir, ['from', CID, '--name', 's'], { HOME: home });
   baton(dir, ['sync', 's'], env(home));
+  const mission = (t) => t.match(/## Mission\n[^\n]*/)[0];
   const before = fs.readFileSync(`${dir}/.baton/briefs/${CID}.md`, 'utf8');
   more(home);
   const r = baton(dir, ['sync', 's'], env(home, { BATON_FAKE: 'badmission' }));
-  assert.equal(r.code, 1);
-  assert.match(r.err, /changed Mission/);
-  assert.equal(fs.readFileSync(`${dir}/.baton/briefs/${CID}.md`, 'utf8'), before);
+  assert.equal(r.code, 0, r.err);
+  const after = fs.readFileSync(`${dir}/.baton/briefs/${CID}.md`, 'utf8');
+  assert.equal(mission(after), mission(before));
+  assert.ok(!after.includes('HIJACKED'));
 });
 test('hook: runner failure leaves brief, logs, exits 0', () => {
   const { dir, home } = setup();

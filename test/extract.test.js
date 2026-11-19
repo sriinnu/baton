@@ -26,3 +26,9 @@ test('scaffold carries mission verbatim, else fill marker', () => {
   const b = parseBrief(scaffold({ meta: { id: 'x' }, skeleton: sk, state: 's' }));
   assert.match(b.sections.Mission, /<!-- fill/);
 });
+
+test('redacts more token shapes and assignments; skeleton keeps assistant turns', async () => {
+  const { redact, skeleton } = await import('../src/extract.js');
+  for (const s of ['github_pat_' + 'a'.repeat(30), 'xoxb-1234567890-abc', 'password=hunter2', 'eyJhbGciOiJIUzI1.eyJzdWIiOiIxMjM0.abcdefghij12']) assert.equal(redact(`x ${s} y`).includes('[REDACTED]'), true, s);
+  assert.deepEqual(skeleton([{ role: 'assistant', text: 'chose A because B' }]).assistant, ['chose A because B']);
+});

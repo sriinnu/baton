@@ -8,7 +8,7 @@ export function measure(cwd) {
   const head = out(cwd, ['rev-parse', 'HEAD'], null);
   const br = out(cwd, ['symbolic-ref', '--short', '-q', 'HEAD'], null);
   let dirty = [];
-  try { dirty = run(cwd, ['status', '--porcelain']).split('\n').filter(Boolean).map((l) => l.slice(3)); } catch {}
+  try { dirty = run(cwd, ['status', '--porcelain', '-z']).split('\0').filter(Boolean).map((l) => l.slice(3)); } catch {}
   return { repo: true, branch: br ?? (head ? `detached at ${head.slice(0, 7)}` : null), head, diffStat: out(cwd, ['diff', '--stat', 'HEAD']), dirty };
 }
 

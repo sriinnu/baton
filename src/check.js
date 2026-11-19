@@ -15,12 +15,11 @@ export function check(cwd, ref, { run = true } = {}) {
   let ok = true;
   if (hasFillMarkers(text)) { lines.push('brief has unfilled sections'); ok = false; }
   if (run && st.verify) {
-    const [cmd, ...args] = st.verify.split(/\s+/);
-    const r = spawnSync(cmd, args, { cwd, timeout: 120000, encoding: 'utf8' });
+    const r = spawnSync(st.verify, { cwd, timeout: 120000, encoding: 'utf8', shell: true }); // runs as written, like a Makefile line
     if (r.status !== 0) { lines.push(`verify failed (${st.verify}): exit ${r.status ?? r.error?.code}`); ok = false; }
   }
   const stamp = `${new Date().toISOString()} ${process.env.BATON_AGENT || 'agent'}`;
   b.sections.Check = lines.length ? `${stamp} ${d.length ? 'DRIFT' : 'NOT OK'}: ${lines.join('; ')}` : `${stamp} ok`;
-  store.writeBrief(cwd, e.id, serializeBrief(b));
+  if (run) store.writeBrief(cwd, e.id, serializeBrief(b)); // --no-run is read-only
   return { ok: ok && !d.length, drift: d.length > 0, lines };
 }

@@ -1,3 +1,4 @@
+import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import { parseBrief, serializeBrief, hasFillMarkers } from './brief.js';
@@ -26,7 +27,7 @@ export const COMMANDS = {
     const id = a.id || store.newId();
     store.writeBrief(cwd, id, stripExtract(build(cwd, { id, name: a.name, agent: a.agent, parent, sk: skeleton([]) })));
     // pending: the next agent hook adopts this brief for the new session so sync keeps it current.
-    store.register(cwd, { id, name: a.name, agent: a.agent, parent: parent?.id, sessionId: a.id, pending: a.id ? false : true });
+    store.register(cwd, { id, name: a.name, agent: a.agent, parent: parent?.id, sessionId: a.id, pending: a.id ? false : true, pendingFrom: process.env.CLAUDE_SESSION_ID || process.env.CODEX_THREAD_ID });
     return { out: store.briefPath(cwd, id) };
   },
 
@@ -78,7 +79,8 @@ export const COMMANDS = {
     const cb = parseBrief(store.readBrief(cwd, c.id) || '');
     const pb = parseBrief(store.readBrief(cwd, c.parent) || '');
     const first = (s) => (s || '').split('\n').find((l) => l.trim() && !l.startsWith('<!--')) || '(nothing reported)';
-    pb.sections.Lineage = [pb.sections.Lineage, `- ${c.id}${c.name ? ` (${c.name})` : ''} — ${first(cb.sections.Done).replace(/^- /, '').slice(0, 120)}`].filter(Boolean).join('\n');
+    const line = `- ${c.id}${c.name ? ` (${c.name})` : ''} — ${first(cb.sections.Done).replace(/^- /, '').slice(0, 120)}`;
+    pb.sections.Lineage = (pb.sections.Lineage || '').split('\n').filter((l) => !l.startsWith(`- ${c.id}`)).concat(line).filter(Boolean).join('\n');
     const have = pb.sections.Decisions || '';
     const add = (cb.sections.Decisions || '').split('\n').filter((l) => l.trim() && !l.startsWith('<!--') && !have.includes(l));
     if (add.length) pb.sections.Decisions = [have, ...add].filter(Boolean).join('\n');
@@ -97,7 +99,7 @@ export const COMMANDS = {
   },
 
   async sync(cwd, a, [ref], stdin) {
-    if (a.hook) return hook(cwd, stdin, process.argv[process.argv.length - 1]);
+    if (a.hook) return hook(cwd, stdin, process.argv[process.argv.length - 1], a.bg);
     const r = await sync(cwd, need(cwd, ref).id);
     return { out: r.updated ? 'updated' : `skipped: ${r.reason}` };
   },
@@ -123,8 +125,16 @@ COMMANDS.takeover = (cwd, a, [ref]) => {
 const stripExtract = (t) => { const b = parseBrief(t); delete b.sections.Extract; return serializeBrief(b); };
 
 // Hook mode never fails the host agent: errors go to .baton/sync.log, exit 0.
-async function hook(cwd0, stdin, argvJson) {
+async function hook(cwd0, stdin, argvJson, bg) {
   if (process.env.BATON_SYNC) return { out: '' };
+  if (!bg && !process.env.BATON_FG) { // load-bearing: never make the agent wait on a model call
+    const c = spawn(process.execPath, [process.argv[1], 'sync', '--hook', '--bg'], { cwd: cwd0, detached: true, stdio: ['pipe', 'ignore', 'ignore'] });
+    c.on('error', () => {});
+    c.stdin.on('error', () => {});
+    c.stdin.end(stdin || argvJson || '{}');
+    c.unref();
+    return { out: '' };
+  }
   let input = {};
   try { input = JSON.parse(stdin || argvJson || '{}'); } catch {}
   const cwd = input.cwd || cwd0;
@@ -133,8 +143,8 @@ async function hook(cwd0, stdin, argvJson) {
   try {
     let e = store.resolve(cwd, sid);
     if (!e) {
-      const loc = input.transcript_path ? { agent: input.transcript_path.includes('/.codex/') ? 'codex' : 'claude', path: input.transcript_path } : locate(sid, { home: home() });
-      const pend = store.adoptable(cwd);
+      const loc = input.transcript_path ? { agent: /[\\/]\.codex[\\/]/.test(input.transcript_path) ? 'codex' : 'claude', path: input.transcript_path } : locate(sid, { home: home() });
+      const pend = store.adoptable(cwd, sid);
       if (pend) { store.update(cwd, pend.id, { pending: false, sessionId: sid, sourcePath: loc.path, agent: loc.agent }); e = store.resolve(cwd, pend.id); }
       else e = store.register(cwd, { id: sid, agent: loc.agent, sessionId: sid, sourcePath: loc.path });
     }

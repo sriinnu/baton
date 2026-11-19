@@ -17,7 +17,7 @@ export function repo() {
   return { dir: d, git: g };
 }
 export const baton = (cwd, args, env = {}, input) => {
-  const r = spawnSync('node', [BIN, ...args], { cwd, encoding: 'utf8', input, env: { ...process.env, HOME, ...env } });
+  const r = spawnSync('node', [BIN, ...args], { cwd, encoding: 'utf8', input, env: { ...process.env, HOME, BATON_FG: '1', ...env } });
   return { code: r.status, out: r.stdout.trim(), err: r.stderr.trim() };
 };
 export const homeCopy = () => {

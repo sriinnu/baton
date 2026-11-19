@@ -38,7 +38,7 @@ export function resolve(cwd, ref) {
 export function register(cwd, o) {
   const i = load(cwd);
   const e = i.briefs[o.id] ?? { id: o.id, name: null, agent: null, parent: null, sessionId: null, sourcePath: null, sourceOffset: 0, children: [] };
-  for (const k of ['name', 'agent', 'parent', 'sessionId', 'sourcePath', 'pending']) if (o[k] !== undefined) e[k] = o[k];
+  for (const k of ['name', 'agent', 'parent', 'sessionId', 'sourcePath', 'pending', 'pendingFrom']) if (o[k] !== undefined) e[k] = o[k];
   if (e.parent && !i.briefs[e.parent]) throw new Error(`unknown parent: ${e.parent}`);
   if (o.name) for (const x of Object.values(i.briefs)) if (x.id !== e.id && x.name === o.name) x.name = null;
   e.mission = e.parent ? i.briefs[e.parent].mission : e.id;
@@ -55,7 +55,8 @@ export function update(cwd, id, patch) {
   save(cwd, i);
 }
 
-export const adoptable = (cwd) => all(cwd).find((e) => e.pending);
+// A pending brief is adopted by the next *other* session within an hour (not by its writer, not much later).
+export const adoptable = (cwd, sid) => all(cwd).find((e) => e.pending && e.pendingFrom !== sid && Date.now() - Date.parse(e.updated) < 3600000);
 
 export function lineage(cwd, id) {
   const i = load(cwd);
