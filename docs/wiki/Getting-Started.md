@@ -1,7 +1,7 @@
 # Getting started
 
 ```sh
-git clone git@github.com:sriinnu/baton.git ~/code/baton   # not on npm yet
+git clone https://github.com/sriinnu/baton.git ~/code/baton   # not on npm yet
 cd ~/code/baton && npm link                                # Node >= 20, zero dependencies
 cd your-repo && baton init                                 # creates .baton/ (gitignored)
 ```

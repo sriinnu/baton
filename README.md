@@ -1,4 +1,6 @@
-# baton
+<p align="center"><img src="assets/logo.svg" width="120" alt="baton logo"></p>
+
+<h1 align="center">baton</h1>
 
 **Pass work between AI coding agents without re-explaining, and without resending 200k tokens.**
 
@@ -18,27 +20,87 @@ baton keeps one small markdown **brief** per piece of work. Any agent can read i
 
 ## Install
 
-Needs Node >= 20 and git. No dependencies. Not on npm yet (the package `@sriinnu/baton` is unpublished), so clone and link:
+Needs **Node >= 20** and **git**. No dependencies. Not on npm yet (`@sriinnu/baton` is unpublished), so clone and link.
+
+### 1. CLI (required)
+
+macOS / Linux:
 
 ```sh
-git clone git@github.com:sriinnu/baton.git ~/code/baton
-cd ~/code/baton && npm link          # puts `baton` on PATH (same in PowerShell)
-cd your-repo && baton init           # once per repo: creates .baton/ (gitignored)
+git clone https://github.com/sriinnu/baton.git ~/code/baton
+cd ~/code/baton && npm link
 ```
 
-Then wire up your agent (all optional; the CLI works alone):
+Windows (PowerShell):
 
-| Agent | Setup |
-|---|---|
-| Any | paste [`rules/AGENTS.snippet.md`](rules/AGENTS.snippet.md) into `AGENTS.md` / `CLAUDE.md` / `GEMINI.md` |
-| Claude Code (CLI and Desktop) | `claude plugin marketplace add ~/code/baton` then `claude plugin install baton@sriinnu-baton`. Gives skills `/baton:handover`, `/baton:takeover`, `/baton:switch` and hooks. Restart the app. After `git pull`, run `/reload-plugins` |
-| Codex | copy `codex/*.md` to `~/.codex/prompts/`; in `~/.codex/config.toml` set `notify = ["baton", "sync", "--hook"]` |
+```powershell
+git clone https://github.com/sriinnu/baton.git "$HOME\code\baton"
+cd "$HOME\code\baton"; npm link
+```
 
-Notes:
+Open a **new** terminal, then check: `baton --help`. If it is not found, add npm's global bin to PATH (`npm prefix -g`; on Windows that is `%APPDATA%\npm`) and restart the terminal.
 
-- macOS and Linux: the Claude CLI and the Desktop app share `~/.claude`, so one plugin install covers both. On Windows, Desktop has its own config (`%USERPROFILE%\.claude`): run the two `claude plugin` commands with Desktop's `claude.exe`. WSL has its own `~/.claude` again.
-- Hooks do nothing unless `baton` is on PATH and the repo has `.baton/`.
-- Windows is untested end to end.
+Then, once per repo:
+
+```sh
+cd your-repo && baton init      # creates .baton/ (gitignored)
+```
+
+### 2. Claude Code (CLI, and the Code tab in Claude Desktop)
+
+```sh
+claude plugin marketplace add ~/code/baton      # Windows: "$HOME\code\baton"
+claude plugin install baton@sriinnu-baton
+claude plugin list                              # baton@sriinnu-baton should show "enabled"
+```
+
+Restart Claude Code / Claude Desktop. You get `/baton:handover`, `/baton:takeover`, `/baton:switch` and the sync hooks.
+
+- The CLI and the Desktop **Code** tab share `~/.claude` (`%USERPROFILE%\.claude` on Windows), so one install covers both. Desktop's chat/Cowork mode does not load these plugins.
+- On Windows, hooks run through Git Bash (installed with Git for Windows).
+- WSL has its own `~/.claude`: install again inside WSL if you use Claude there.
+
+### 3. Codex (CLI and Codex app; both use `~/.codex`)
+
+Skills (current Codex):
+
+```sh
+for s in handover takeover switch; do
+  mkdir -p ~/.codex/skills/baton-$s
+  sed "s/^name: $s/name: baton-$s/" ~/code/baton/plugin/skills/$s/SKILL.md > ~/.codex/skills/baton-$s/SKILL.md
+done
+```
+
+```powershell
+foreach ($s in 'handover','takeover','switch') {
+  $d = "$HOME\.codex\skills\baton-$s"; New-Item -ItemType Directory -Force $d | Out-Null
+  (Get-Content "$HOME\code\baton\plugin\skills\$s\SKILL.md" -Raw) -replace "name: $s", "name: baton-$s" | Set-Content "$d\SKILL.md"
+}
+```
+
+Older Codex (custom prompts): copy `codex/*.md` into `~/.codex/prompts/` (create the folder first).
+
+Sync hook: add this line to `~/.codex/config.toml` **at the top, before any `[section]`** (TOML puts anything after a header inside that section):
+
+```toml
+notify = ["baton", "sync", "--hook"]
+```
+
+Restart Codex.
+
+### 4. Any other agent
+
+Paste [`rules/AGENTS.snippet.md`](rules/AGENTS.snippet.md) into `AGENTS.md` / `CLAUDE.md` / `GEMINI.md`. Reading a brief needs no plugin.
+
+### Update / uninstall
+
+```sh
+cd ~/code/baton && git pull        # CLI updates immediately (linked)
+```
+
+In Claude Code run `/reload-plugins` (or restart). Uninstall: `claude plugin uninstall baton@sriinnu-baton`, `npm unlink -g @sriinnu/baton`, delete `~/.codex/skills/baton-*` and the `notify` line.
+
+Notes: hooks do nothing unless `baton` is on PATH and the repo has `.baton/`. Windows works but has had less testing.
 
 ## Use
 
