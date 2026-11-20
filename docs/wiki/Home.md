@@ -15,4 +15,4 @@ A **brief** is one small markdown file per piece of work (mission, decisions, do
 - [[Contributing-a-Reader]]
 - [[FAQ]]
 
-Try it without installing: open `playground/index.html`.
+Try it without installing: download [`playground/index.html`](https://github.com/sriinnu/baton/blob/master/playground/index.html) and open it in a browser (single file, nothing uploaded).
