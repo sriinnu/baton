@@ -5,6 +5,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-20
+
+First npm release (`npm i -g @sriinnu/baton`).
+
 ### Changed
 - **baton runs only when called.** The plugin's `Stop`/`PreCompact`/`SubagentStop` hooks and the Codex `notify` setup are gone, along with per-turn sync and pending-brief adoption. The agent writes the brief at handover from its warm cache; a model is called only by `baton sync <ref>` or `takeover --distill`. `sync --hook` is a silent no-op, so an old hook line cannot break an agent.
 - `handover` binds the brief to the writing session (`CLAUDE_CODE_SESSION_ID` / `CODEX_THREAD_ID`) so `sync` can refresh it later.

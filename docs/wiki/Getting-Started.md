@@ -1,8 +1,8 @@
 # Getting started
 
 ```sh
-git clone https://github.com/sriinnu/baton.git ~/code/baton   # not on npm yet
-cd ~/code/baton && npm link                                # Node >= 20, zero dependencies
+npm i -g @sriinnu/baton                                    # Node >= 20, zero dependencies
+git clone https://github.com/sriinnu/baton.git ~/code/baton   # only for the Claude plugin / Codex skills
 cd your-repo && baton init                                 # creates .baton/ (gitignored)
 ```
 

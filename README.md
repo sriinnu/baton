@@ -22,7 +22,7 @@ baton keeps one small markdown **brief** per piece of work. Any agent can read i
 
 | | **CLI (terminal)** | **Desktop app** (Claude Code tab / uploaded plugin) |
 |---|---|---|
-| Install | `npm link` the CLI, then `claude plugin marketplace add` + `claude plugin install` (see [Install](#install)) | Upload `dist/baton-plugin.zip` (Settings, Customize, Plugins). Nothing else to install: Node 20+ only |
+| Install | `npm i -g @sriinnu/baton`, then `claude plugin marketplace add` + `claude plugin install` (see [Install](#install)) | Upload `dist/baton-plugin.zip` (Settings, Customize, Plugins). Nothing else to install: Node 20+ only |
 | Leave | `/baton:handover` or `/baton:switch` | same |
 | Switch model | `/clear`, then `/model <target>`, then `/baton:takeover <name>` | Start a **new task** with the target model selected, then `/baton:takeover <name>` |
 | Don't | | Use the model picker on the same task: it re-reads the whole history |
@@ -31,11 +31,17 @@ Handing off to another agent (for example Codex) works the same way: write the b
 
 ## Install
 
-Needs **Node >= 20** and **git**. No dependencies. Not on npm yet (`@sriinnu/baton` is unpublished), so clone and link.
+Needs **Node >= 20** and **git**. No dependencies. Reading archived Codex threads needs Node >= 22.15.
 
 **Only using the Claude plugin?** It bundles the CLI, so you need just Node >= 20 and can skip step 1. Step 1 is for running `baton` in a terminal or with Codex.
 
 ### 1. CLI (required)
+
+```sh
+npm i -g @sriinnu/baton
+```
+
+The Claude plugin and the Codex skills below install from a clone, so clone too if you want them (or to hack on baton; `npm link` puts the clone on PATH instead):
 
 macOS / Linux:
 
@@ -244,7 +250,7 @@ All worktrees of a repo share the main checkout's `.baton/` (a fresh worktree ha
 
 ## Status
 
-v0.1, private. Session readers: Claude Code (`~/.claude/projects`), Codex (`~/.codex/sessions`), generic `--path`. Another agent is a ~30-line reader in `plugin/src/readers/`. Covered by 60 tests against fixture transcripts and a fake model, plus `baton doctor` against real sessions. Live-tested: Claude Code ↔ Codex handover and takeover, and `--distill` with `claude -p --model haiku` on a real 2 MB Codex session; `codex exec` as the runner has not been exercised yet.
+v0.2.0 on npm (`@sriinnu/baton`). Session readers: Claude Code (`~/.claude/projects`), Codex (`~/.codex/sessions`), generic `--path`. Another agent is a ~30-line reader in `plugin/src/readers/`. Covered by 60 tests against fixture transcripts and a fake model, plus `baton doctor` against real sessions. Live-tested: Claude Code ↔ Codex handover and takeover, and `--distill` with `claude -p --model haiku` on a real 2 MB Codex session; `codex exec` as the runner has not been exercised yet.
 
 ## Playground
 

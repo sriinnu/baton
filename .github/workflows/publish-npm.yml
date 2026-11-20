@@ -1,0 +1,66 @@
+name: Publish npm
+
+# Stages @sriinnu/baton when a GitHub release is published. A staged version goes
+# live only after the maintainer approves it with 2FA (npmjs.com, or
+# `npm stage approve <id>`); this workflow cannot make anything live on its own.
+# No npm token exists: auth is npm trusted publishing, stage-only, set up by the
+# maintainer after the first (hand-published) version:
+#   npm trust github @sriinnu/baton --repo sriinnu/baton --file publish-npm.yml --env npm --allow-stage-publish
+# Re-run by hand for an existing tag with "Run workflow".
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to stage, e.g. v0.2.1
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-npm
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Stage @sriinnu/baton
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: npm
+    permissions:
+      contents: read
+      # Signs the provenance attestation, and is the trusted-publishing credential.
+      id-token: write
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    steps:
+      - name: Validate tag
+        run: |
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::not a release tag: $TAG"; exit 1; }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/tags/${{ env.TAG }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - name: npm with stage support
+        run: npm install -g npm@11.20.0
+      - name: Check the tag matches package.json
+        run: |
+          pkg=$(node -p "require('./package.json').version")
+          [[ "v$pkg" == "$TAG" ]] || { echo "::error::tag $TAG but package.json is $pkg"; exit 1; }
+          echo "VERSION=$pkg" >> "$GITHUB_ENV"
+      # prepublishOnly runs scripts/release-gate.mjs publish: versions agree, changelog entry, tag at HEAD, tests pass.
+      - name: Stage
+        run: |
+          name=$(node -p "require('./package.json').name")
+          if [[ "$(npm view "$name@$VERSION" version 2>/dev/null)" == "$VERSION" ]]; then
+            echo "$name@$VERSION is already on npm."
+            exit 0
+          fi
+          npm stage publish --provenance --access public
+          echo "::notice::$name@$VERSION is staged. Approve it on npmjs.com or with 'npm stage approve'."

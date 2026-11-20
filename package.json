@@ -1,6 +1,6 @@
 {
   "name": "@sriinnu/baton",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Pass work between AI coding agents: distilled, inheritable briefs.",
   "author": "Srinivas Pendela (https://github.com/sriinnu)",
   "homepage": "https://github.com/sriinnu/baton#readme",
@@ -36,7 +36,12 @@
   "scripts": {
     "test": "node --test test/*.test.js",
     "playground": "node playground/build.js",
-    "pack:plugin": "node scripts/pack-plugin.js"
+    "pack:plugin": "node scripts/pack-plugin.js",
+    "release:check": "node scripts/release-gate.mjs",
+    "prepublishOnly": "node scripts/release-gate.mjs publish"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
 }
