@@ -41,23 +41,15 @@ Needs **Node >= 20** and **git**. No dependencies. Reading archived Codex thread
 npm i -g @sriinnu/baton
 ```
 
-The Claude plugin and the Codex skills below install from a clone, so clone too if you want them (or to hack on baton; `npm link` puts the clone on PATH instead):
-
-macOS / Linux:
+The Claude plugin and the Codex skills below install from a clone, so clone too if you want them:
 
 ```sh
-git clone https://github.com/sriinnu/baton.git ~/code/baton
-cd ~/code/baton && npm link
+git clone https://github.com/sriinnu/baton.git ~/code/baton         # Windows: "$HOME\code\baton"
 ```
 
-Windows (PowerShell):
+Hacking on baton itself? Run `npm link` in the clone instead of the npm install, so `baton` runs your checkout.
 
-```powershell
-git clone https://github.com/sriinnu/baton.git "$HOME\code\baton"
-cd "$HOME\code\baton"; npm link
-```
-
-Open a **new** terminal, then check: `baton --help`. If it is not found, add npm's global bin to PATH (`npm prefix -g`; on Windows that is `%APPDATA%\npm`) and restart the terminal.
+Open a **new** terminal, then check: `baton --help` prints the command list. If it is not found, add npm's global bin to PATH (`npm prefix -g`; on Windows that is `%APPDATA%\npm`) and restart the terminal.
 
 Then, once per repo:
 
@@ -109,10 +101,11 @@ Paste [`rules/AGENTS.snippet.md`](rules/AGENTS.snippet.md) into `AGENTS.md` / `C
 ### Update / uninstall
 
 ```sh
-cd ~/code/baton && git pull        # CLI updates immediately (linked)
+npm i -g @sriinnu/baton@latest     # the CLI
+cd ~/code/baton && git pull        # the plugin and skills; then rerun the Codex skills loop above
 ```
 
-In Claude Code run `/reload-plugins` (or restart). Uninstall: `claude plugin uninstall baton@sriinnu-baton`, `npm unlink -g @sriinnu/baton` and delete `~/.codex/skills/baton-*`.
+In Claude Code run `claude plugin marketplace update sriinnu-baton`, then `/reload-plugins` (or restart). Uninstall: `claude plugin uninstall baton@sriinnu-baton`, `npm uninstall -g @sriinnu/baton` and delete `~/.codex/skills/baton-*`.
 
 Note: Windows works but has had less testing.
 
@@ -172,7 +165,7 @@ The previous model comes from the brief (or the old transcript); the new one is 
 
 The new model reads a few thousand tokens instead of the whole conversation. baton cannot intercept `/model` itself; switching in place still resends everything. In the **desktop app**, do not use the model picker on the same task (it warns that the full history gets re-read): start a **new task** with the target model selected, then run `/baton:takeover <name>`.
 
-**From a past session**, by id or name:
+**From a past session**, by id (for names and `last`, use `takeover` above):
 
 ```sh
 baton from <session-id>                       # Claude Code or Codex transcript → brief to fill
@@ -236,7 +229,7 @@ or `{ "runner": "codex", "model": "<mini model>" }`. The model can never change 
 | `doctor [--limit n]` | run the readers on your newest real sessions; exit 1 if one comes back empty |
 | `ls` | lineage tree |
 
-`<ref>` is a brief id, a name, or a session id.
+`<ref>` is a brief id or name, or a session id. `takeover` also accepts a session id prefix, a session name, or `last`.
 
 ## Worktrees
 

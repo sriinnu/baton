@@ -1,6 +1,6 @@
 ## baton: passing work between agents
 
-Briefs live in `.baton/briefs/<id>.md`: distilled, never transcripts. Any agent can read and write them by hand; the `baton` CLI (github.com/sriinnu/baton: clone, `npm link`) only automates it.
+Briefs live in `.baton/briefs/<id>.md`: distilled, never transcripts. Any agent can read and write them by hand; the `baton` CLI (`npm i -g @sriinnu/baton`) only automates it.
 
 **Leaving (handing off, context nearly full, switching model):**
 1. `baton handover --name <name> [--parent <ref>]`, then fill every `<!-- fill -->` from your own context: Task, Decisions (with why), Done, Next, Dead ends, Open questions. Root briefs also get a one-paragraph Mission.
