@@ -1,2 +1,3 @@
 # Fake AWS key in the redaction test fixture (test/extract.test.js), not a real secret.
 15a34da6371880eb38ce0fa73f022fc5575f819d:test/extract.test.js:aws-access-token:7
+test/extract.test.js:aws-access-token:7
