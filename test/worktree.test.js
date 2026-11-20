@@ -40,5 +40,5 @@ test('State records worktree; Read first lists mission/knowledge files and confi
   const t = fs.readFileSync(baton(dir, ['write', '--name', 'w2']).out, 'utf8');
   assert.match(t, /## Read first\n- MISSION\.md\n- notes\.md\n/);
   assert.ok(!t.includes('absent.md'));
-  assert.match(t, new RegExp(`worktree: ${dir.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
+  assert.match(t, new RegExp(`worktree: ${fs.realpathSync(dir).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
 });

@@ -17,7 +17,12 @@ export function lineageText(cwd, parent) {
 
 // Files a cold agent should read to catch up: well-known mission/knowledge files plus .baton/config.json `readFirst`.
 const KNOWN = ['MISSION.md', 'mission.md', 'docs/MISSION.md', 'docs/mission.md', 'KNOWLEDGE.md', 'docs/knowledge.md'];
-export const readFirst = (cwd, at) => [...new Set([...KNOWN, ...(config(cwd).readFirst || [])])].filter((f) => fs.existsSync(path.join(at, f))).map((f) => `- ${f}`).join('\n');
+// Match the exact on-disk name: on case-insensitive filesystems (macOS, Windows) existsSync('mission.md')
+// is true for MISSION.md, which would list one file twice under two spellings.
+const existsExact = (at, f) => {
+  try { return fs.readdirSync(path.join(at, path.dirname(f))).includes(path.basename(f)); } catch { return false; }
+};
+export const readFirst = (cwd, at) => [...new Set([...KNOWN, ...(config(cwd).readFirst || [])])].filter((f) => existsExact(at, f)).map((f) => `- ${f}`).join('\n');
 
 export function build(cwd, { id, name, agent, model, parent, sk, stateCwd = cwd, verify }) {
   const mission = parent ? (parseBrief(readBrief(cwd, parent.id) || '').sections.Mission || '') : '';
