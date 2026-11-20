@@ -91,16 +91,35 @@ function serializeBrief({ meta, sections }) {
 const SECRETS = [/sk-[A-Za-z0-9_-]{16,}/g, /ghp_[A-Za-z0-9]{20,}/g, /AKIA[0-9A-Z]{16}/g, /Bearer\s+\S+/g, /github_pat_\w{20,}/g, /gh[osur]_[A-Za-z0-9]{20,}/g, /xox[abprs]-[\w-]{10,}/g, /eyJ[\w-]{8,}\.[\w-]{8,}\.[\w-]{8,}/g, /\b(?:secret|token|password|passwd|api[_-]?key)\s*[:=]\s*['"]?[A-Za-z0-9_\-\/+.]{12,}/gi, /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g];
 const redact = (s) => SECRETS.reduce((t, re) => t.replace(re, '[REDACTED]'), String(s ?? ''));
 const uniq = (a) => [...new Set(a)];
-const cut = (s, n) => redact(s).slice(0, n);
-const SHELL = new Set(['Bash', 'exec_command', 'shell']);
+// Every Extract item is rendered as ONE list line. A multi-line item breaks the brief:
+// a line like "## Summary" inside an assistant turn or a heredoc would parse as a new
+// section (and survive stripExtract). So collapse whitespace, and cap after redacting.
+const flatLine = (s) => redact(s).replace(/\s+/g, ' ').trim();
+const cut = (s, n) => { const f = flatLine(s); return f.length > n ? `${f.slice(0, n - 1)}…` : f; };
+// A command is read by its first line; a heredoc or script body only says how long it was.
+const cmdLine = (s, n) => {
+  const lines = redact(s).split('\n').map((l) => l.trim()).filter(Boolean);
+  const more = lines.length > 1 ? ` (+${lines.length - 1} lines)` : '';
+  return cut(lines[0] ?? '', n - more.length) + more;
+};
+// An error keeps its first line (which command failed, the exit code) and its tail (the
+// message and failing frame come last). The middle, usually log noise, is what gets cut.
+const errLine = (s, n) => {
+  const f = flatLine(s);
+  if (f.length <= n) return f;
+  const first = cut(redact(s).split('\n').find((l) => l.trim()) ?? '', Math.floor(n / 3));
+  const room = n - first.length - 3;
+  return `${first} … ${f.slice(f.length - room)}`;
+};
+const SHELL = new Set(['Bash', 'REPL', 'exec_command', 'shell']);
 
 function skeleton(turns) {
   const users = turns.filter((t) => t.role === 'user');
   return {
     firstGoal: users[0] ? cut(users[0].text, 500) : '',
-    files: uniq(turns.flatMap((t) => t.files || [])).map((f) => redact(f)),
-    commands: turns.filter((t) => SHELL.has(t.tool)).map((t) => cut(t.text, 200)).slice(-30),
-    errors: uniq(turns.filter((t) => t.tool === 'result' && /\b(error|failed|exception|traceback)\b/i.test(t.text)).map((t) => cut(t.text, 200))).slice(0, 10),
+    files: uniq(turns.flatMap((t) => t.files || [])).map((f) => flatLine(f)),
+    commands: turns.filter((t) => SHELL.has(t.tool)).map((t) => cmdLine(t.text, 200)).slice(-30),
+    errors: uniq(turns.filter((t) => t.tool === 'result' && /\b(error|failed|exception|traceback)\b/i.test(t.text)).map((t) => errLine(t.text, 300))).slice(0, 10),
     lastUser: users.slice(-5).map((t) => cut(t.text, 500)),
     assistant: turns.filter((t) => t.role === 'assistant').slice(-10).map((t) => cut(t.text, 400)),
   };
@@ -138,12 +157,13 @@ const text = (c) => (typeof c === 'string' ? c : (c || []).filter((b) => b.type 
 function parseClaude(content, from = 0, isSub = false) {
   const lines = content.split('\n').filter(Boolean);
   const turns = [];
-  let cwd, model;
+  let cwd, model, started;
   const byMsg = new Map(); // usage repeats across a message's records: keep one per message id
   lines.forEach((l, n) => {
     let r;
     try { r = JSON.parse(l); } catch { return; }
     cwd ??= r.cwd;
+    started ??= r.timestamp;
     if (r.isSidechain && !isSub) return;
     if (r.type === 'assistant' && r.message?.model && r.message.model !== '<synthetic>') model = r.message.model;
     if (r.type === 'assistant' && r.message?.usage) byMsg.set(r.message.id || `n${n}`, r.message.usage);
@@ -161,7 +181,7 @@ function parseClaude(content, from = 0, isSub = false) {
         else if (b.type === 'tool_use') {
           const i = b.input || {};
           const f = i.file_path || i.path || i.notebook_path;
-          turns.push({ role: 'tool', tool: b.name, text: i.command || `${b.name} ${f || ''}`.trim(), files: f ? [f] : [] });
+          turns.push({ role: 'tool', tool: b.name, text: i.command || (b.name === 'REPL' && (i.description || String(i.code || '').split('\n')[0])) || `${b.name} ${f || ''}`.trim(), files: f ? [f] : [] });
         }
       }
     }
@@ -169,37 +189,89 @@ function parseClaude(content, from = 0, isSub = false) {
   const us = [...byMsg.values()];
   const last = us.at(-1);
   const usage = last && { context: (last.input_tokens || 0) + (last.cache_read_input_tokens || 0) + (last.cache_creation_input_tokens || 0), read: us.reduce((a, u) => a + (u.cache_read_input_tokens || 0), 0), write: us.reduce((a, u) => a + (u.cache_creation_input_tokens || 0), 0) };
-  return { turns, lines: lines.length, cwd, ...(model && { model }), ...(usage && { usage }) };
+  return { turns, lines: lines.length, cwd, ...(started && { started }), ...(model && { model }), ...(usage && { usage }) };
 }
 
 
 
 
-// Record types (codex-cli 0.128): session_meta{id,cwd,source.subagent.thread_spawn.parent_thread_id},
-// event_msg/user_message{message}, event_msg/agent_message{message},
-// response_item/function_call{name,arguments}, response_item/function_call_output{output}.
+// Two on-disk formats, picked per file:
+//  legacy (codex-cli <= 0.13x): event_msg/user_message|agent_message, response_item/function_call(+_output),
+//    event_msg/token_count{info}, session_meta.source.subagent.thread_spawn.parent_thread_id.
+//  items (codex 0.16x, Desktop + CLI): event_msg/item_completed{item:{type: UserMessage | AgentMessage |
+//    CommandExecution | FileChange | McpToolCall | ...}}, token_usage_record{usage}, session_meta.parent_thread_id,
+//    event_msg/thread_settings_applied{thread_settings.model}. The same file also carries response_item/message
+//    records (AGENTS.md and environment injections as role "user"), which are model input, not the conversation.
+const TAIL = 600;
+const tail = (s) => { const t = String(s ?? ''); return t.length > TAIL ? '…' + t.slice(-TAIL) : t; };
+const texts = (c) => (Array.isArray(c) ? c.filter((b) => typeof b?.text === 'string').map((b) => b.text).join('\n') : typeof c === 'string' ? c : '');
+const shellText = (i) => (Array.isArray(i.parsed_cmd) && i.parsed_cmd.length ? i.parsed_cmd.map((p) => p.cmd).filter(Boolean).join(' && ') : '') || (Array.isArray(i.command) ? i.command.at(-1) : i.command) || '';
+
+function item(i, turns) {
+  switch (i.type) {
+    case 'UserMessage': { const t = texts(i.content); if (t.trim()) turns.push({ role: 'user', text: t }); return; }
+    case 'AgentMessage': { const t = texts(i.content); if (t.trim()) turns.push({ role: 'assistant', text: t, ...(i.phase && { phase: i.phase }) }); return; }
+    case 'CommandExecution': {
+      turns.push({ role: 'tool', tool: 'exec_command', text: shellText(i), files: [] });
+      const failed = typeof i.exit_code === 'number' && i.exit_code !== 0;
+      turns.push({ role: 'tool', tool: 'result', text: (failed ? `command failed (exit ${i.exit_code}): ` : '') + tail(i.aggregated_output) });
+      return;
+    }
+    case 'FileChange': {
+      const files = Object.keys(i.changes || {});
+      turns.push({ role: 'tool', tool: 'apply_patch', text: `apply_patch ${files.join(' ')}`.trim(), files });
+      if (i.status && i.status !== 'completed') turns.push({ role: 'tool', tool: 'result', text: `patch failed: ${tail(i.stderr || i.stdout)}` });
+      return;
+    }
+    case 'McpToolCall': {
+      const name = [i.server, i.tool].filter(Boolean).join('.');
+      turns.push({ role: 'tool', tool: name || 'mcp', text: name || 'mcp', files: [] });
+      if (i.status && i.status !== 'completed') turns.push({ role: 'tool', tool: 'result', text: `mcp call failed: ${name}` });
+      return;
+    }
+    default: // Reasoning, ContextCompaction, SubAgentActivity, Extension, CollabAgentToolCall, ...: not conversation
+  }
+}
+
+function legacy(r, p, turns) {
+  if (r.type === 'event_msg' && p.type === 'user_message') turns.push({ role: 'user', text: p.message });
+  else if (r.type === 'event_msg' && p.type === 'agent_message') turns.push({ role: 'assistant', text: p.message });
+  else if (r.type === 'response_item' && p.type === 'function_call') {
+    let a = {};
+    try { a = JSON.parse(p.arguments); } catch {}
+    const files = [...String(p.arguments).matchAll(/\*\*\* (?:Update|Add|Delete) File: ([^\s\\"]+)/g)].map((m) => m[1]);
+    turns.push({ role: 'tool', tool: p.name, text: a.cmd || a.command || p.name, files });
+  } else if (r.type === 'response_item' && p.type === 'function_call_output') turns.push({ role: 'tool', tool: 'result', text: String(p.output ?? '') });
+}
+
 function parseCodex(content, from = 0) {
   const lines = content.split('\n').filter(Boolean);
+  const items = content.includes('"item_completed"'); // a file is one format or the other
   const turns = [];
-  let cwd, parent, usage, model;
+  let cwd, parent, model, started, id, legacyUsage;
+  const recs = []; // token_usage_record usage, per response
   lines.forEach((l, n) => {
     let r;
     try { r = JSON.parse(l); } catch { return; }
     const p = r.payload || {};
-    if (r.type === 'session_meta') { cwd = p.cwd; parent = p.source?.subagent?.thread_spawn?.parent_thread_id; return; }
+    if (r.type === 'session_meta') {
+      id ??= p.id; cwd ??= p.cwd; started ??= p.timestamp || r.timestamp;
+      parent ??= p.parent_thread_id || p.source?.subagent?.thread_spawn?.parent_thread_id;
+      return;
+    }
     if (r.type === 'turn_context' && p.model) model = p.model;
-    if (r.type === 'event_msg' && p.type === 'token_count' && p.info) usage = { context: p.info.last_token_usage?.input_tokens || 0, read: p.info.total_token_usage?.cached_input_tokens || 0, write: null }; // codex does not report cache writes
+    if (r.type === 'event_msg' && p.type === 'thread_settings_applied' && p.thread_settings?.model && (!p.thread_id || !id || p.thread_id === id)) model = p.thread_settings.model;
+    if (r.type === 'token_usage_record' && p.usage && (!p.thread_id || !id || p.thread_id === id)) recs.push(p.usage);
+    if (r.type === 'event_msg' && p.type === 'token_count' && p.info) legacyUsage = { context: p.info.last_token_usage?.input_tokens || 0, read: p.info.total_token_usage?.cached_input_tokens || 0, write: null }; // legacy codex does not report cache writes
     if (n < from) return;
-    if (r.type === 'event_msg' && p.type === 'user_message') turns.push({ role: 'user', text: p.message });
-    else if (r.type === 'event_msg' && p.type === 'agent_message') turns.push({ role: 'assistant', text: p.message });
-    else if (r.type === 'response_item' && p.type === 'function_call') {
-      let a = {};
-      try { a = JSON.parse(p.arguments); } catch {}
-      const files = [...String(p.arguments).matchAll(/\*\*\* (?:Update|Add|Delete) File: ([^\s\\"]+)/g)].map((m) => m[1]);
-      turns.push({ role: 'tool', tool: p.name, text: a.cmd || a.command || p.name, files });
-    } else if (r.type === 'response_item' && p.type === 'function_call_output') turns.push({ role: 'tool', tool: 'result', text: String(p.output ?? '') });
+    if (items) { if (r.type === 'event_msg' && p.type === 'item_completed' && p.item) item(p.item, turns); }
+    else legacy(r, p, turns);
   });
-  return { turns, lines: lines.length, cwd, parent, ...(model && { model }), ...(usage && { usage }) };
+  // input_tokens already includes the cached part (OpenAI usage), so it is the whole context of the last call.
+  const usage = recs.length
+    ? { context: recs.at(-1).input_tokens || 0, read: recs.reduce((a, u) => a + (u.cached_input_tokens || 0), 0), write: recs.reduce((a, u) => a + (u.cache_write_input_tokens || 0), 0) }
+    : legacyUsage;
+  return { turns, lines: lines.length, cwd, parent, ...(started && { started }), ...(model && { model }), ...(usage && { usage }) };
 }
 
 

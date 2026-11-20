@@ -8,6 +8,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 ### Changed
 - `baton init` ignores `.baton/` through `.git/info/exclude` (the common dir, so every worktree sees it) instead of appending to your tracked `.gitignore`. If any rule already ignores `.baton/`, it adds nothing. Existing `.gitignore` entries are left as they are.
 
+### Fixed
+- A multi-line Extract item (an assistant turn, a heredoc, a pasted log) that contained a `## ` line was parsed as a new brief section, and survived `stripExtract`. Every Extract item is now one line.
+
+### Changed (briefs)
+- Commands in the Extract show their first line and `(+N lines)` instead of a 200-char blob.
+- Errors keep their first line (what failed) and their tail (the message and failing frame), dropping the noisy middle. Before, they kept only the head.
+- State carries the uncommitted diff, so the next agent sees the work in progress, not just a diffstat. It is redacted, lockfiles are left out, and it is capped at 100 lines / 5,000 chars. Files go in smallest first, so one big or generated file can't crowd out hand edits, and files left out are named. The fence is sized to its content, so a diff of Markdown can't close it early.
+- `playground/index.html` is rebuilt. The committed copy was behind the sources (it was missing the reader's `started` and REPL handling).
+
 ### Added
 - `SECURITY.md`: report vulnerabilities privately through GitHub's private vulnerability reporting.
 

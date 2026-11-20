@@ -194,7 +194,7 @@ id: 019e032c-…   name: auth-fix   agent: codex   parent: null   mission: 019e0
 ## Done / Next / Dead ends / Open questions
 ## Report back  (child briefs) what to fill before finishing
 ## Check        result of the last arrival check
-## State        branch, worktree, HEAD, dirty files, verify command: measured from git, never by a model
+## State        branch, worktree, HEAD, dirty files, verify command, the uncommitted diff (bounded): measured from git, never by a model
 ```
 
 Soft cap 150 lines. Briefs are distillations, never transcripts.

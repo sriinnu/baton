@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { redact } from './extract.js';
 
 const run = (cwd, args) => execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
 const out = (cwd, args, d = '') => { try { return run(cwd, args).trim(); } catch { return d; } };
@@ -32,14 +33,50 @@ export function measure(cwd) {
   const br = out(cwd, ['symbolic-ref', '--short', '-q', 'HEAD'], null);
   let dirty = [];
   try { const f = run(cwd, ['status', '--porcelain', '-z']).split('\0'); for (let i = 0; i < f.length; i++) { if (!f[i]) continue; dirty.push(f[i].slice(3)); if (/^[RC]/.test(f[i])) i++; } } catch {} // renames carry a second NUL field (the old path)
-  return { repo: true, worktree: out(cwd, ['rev-parse', '--show-toplevel'], cwd), root: mainRoot(cwd), branch: br ?? (head ? `detached at ${head.slice(0, 7)}` : null), head, diffStat: out(cwd, ['diff', '--stat', 'HEAD']), dirty };
+  return { repo: true, worktree: out(cwd, ['rev-parse', '--show-toplevel'], cwd), root: mainRoot(cwd), branch: br ?? (head ? `detached at ${head.slice(0, 7)}` : null), head, diffStat: out(cwd, ['diff', '--stat', 'HEAD']), diff: uncommitted(cwd, head), dirty };
 }
+
+// The uncommitted change itself, so the next agent sees the work in progress, not just
+// which files changed. Bounded (a brief stays small), redacted (code edits can carry keys),
+// lockfiles left out (noise). Untracked files are listed under dirty, not diffed.
+// Files go in smallest first, so one big or generated file can't crowd out the many small
+// hand edits; files that don't fit are named, and only the first file is ever cut mid-way.
+export const DIFF_LINES = 100;
+export const DIFF_CHARS = 5000;
+const NOISE = ['package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'bun.lockb', 'Cargo.lock', 'poetry.lock', 'uv.lock', 'go.sum'].map((f) => `:(top,exclude,glob)**/${f}`);
+function uncommitted(cwd, head) {
+  if (!head) return '';
+  const d = out(cwd, ['diff', '--no-color', '--no-ext-diff', 'HEAD', '--', ':/', ...NOISE]);
+  if (!d) return '';
+  const files = redact(d).split(/^(?=diff --git )/m).map((t) => {
+    const lines = t.replace(/\n$/, '').split('\n');
+    return { lines, chars: t.length, name: lines[0].match(/ b\/(.+)$/)?.[1] ?? lines[0] };
+  }).sort((a, b) => a.lines.length - b.lines.length || a.chars - b.chars);
+  const kept = [], left = [];
+  let n = 0, chars = 0;
+  for (const f of files) {
+    if (n + f.lines.length <= DIFF_LINES && chars + f.chars <= DIFF_CHARS) { kept.push(...f.lines); n += f.lines.length; chars += f.chars; continue; }
+    if (!kept.length) { // even the smallest file is too big: show its head
+      let c = 0;
+      for (const l of f.lines) { if (kept.length >= DIFF_LINES || c + l.length > DIFF_CHARS) break; kept.push(l); c += l.length + 1; }
+      left.push(`${f.name} (cut after ${kept.length} of ${f.lines.length} lines)`);
+      n = DIFF_LINES; // budget spent: every later file is only named
+      continue;
+    }
+    left.push(`${f.name} (${f.lines.length} lines)`);
+  }
+  return kept.join('\n') + (left.length ? `\n… not shown: ${left.join(', ')}. Run \`git diff HEAD\`.` : '');
+}
+// A fence longer than any backtick run in the content: a diff context line like " ```"
+// would otherwise close a plain ``` fence and leak the rest of the diff into the brief.
+const fence = (s, lang = '') => { const n = Math.max(3, ...[...s.matchAll(/`+/g)].map((m) => m[0].length + 1)); const f = '`'.repeat(n); return `${f}${lang}\n${s}\n${f}`; };
 
 export function renderState(m, verify) {
   if (!m.repo) return 'repo: not a git repo' + (verify ? `\nverify: ${verify}` : '');
   const l = [`branch: ${m.branch}`, `worktree: ${m.worktree}`, ...(m.root && m.root !== m.worktree ? [`root: ${m.root}`] : []), `head: ${m.head ?? 'none'}`, `dirty: ${m.dirty.join(', ') || 'none'}`];
   if (verify) l.push(`verify: ${verify}`);
-  if (m.diffStat) l.push('```\n' + m.diffStat + '\n```');
+  if (m.diffStat) l.push(fence(m.diffStat));
+  if (m.diff) l.push('uncommitted diff:', fence(m.diff, 'diff'));
   return l.join('\n');
 }
 

@@ -33,3 +33,22 @@ test('redacts more token shapes and assignments; skeleton keeps assistant turns'
   assert.deepEqual(skeleton([{ role: 'assistant', text: 'chose A because B' }]).assistant, ['chose A because B']);
   assert.equal(redact('token: string; const token = getToken()'), 'token: string; const token = getToken()');
 });
+test('every Extract item is one line: a "## " line inside a turn or heredoc cannot become a section', () => {
+  const sk = skeleton([
+    { role: 'user', text: 'do it\n## Fake user section' },
+    { role: 'tool', tool: 'Bash', text: "cat > x.md <<'EOF'\n## Fake heredoc section\nbody\nEOF" },
+    { role: 'assistant', text: 'Done.\n\n## Summary\n- a' },
+  ]);
+  assert.equal(sk.commands[0], "cat > x.md <<'EOF' (+3 lines)");
+  for (const v of [sk.firstGoal, ...sk.commands, ...sk.lastUser, ...sk.assistant]) assert.doesNotMatch(v, /\n/);
+  const b = parseBrief(scaffold({ meta: { id: 'x' }, skeleton: sk, state: 's' }));
+  for (const fake of ['Fake user section', 'Fake heredoc section', 'Summary']) assert.equal(fake in b.sections, false, fake);
+});
+test('errors keep the first line (what failed) and the tail (the message), cutting the noisy middle', () => {
+  const log = `$ npm test\n${'ok noise line\n'.repeat(80)}Error: expected 3 got 4\n    at test (x.test.js:9:3)`;
+  const [e] = skeleton([{ role: 'tool', tool: 'result', text: log }]).errors;
+  assert.match(e, /Error: expected 3 got 4 at test \(x\.test\.js:9:3\)$/);
+  assert.match(e, /^\$ npm test … /);
+  assert.doesNotMatch(e, /\n/);
+  assert.ok(e.length <= 300);
+});
