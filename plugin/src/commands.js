@@ -1,10 +1,11 @@
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
+import path from 'node:path';
 import { parseBrief, serializeBrief, hasFillMarkers } from './brief.js';
 import { measure, parseState, drift } from './git.js';
 import * as store from './store.js';
-import { locate, read } from './readers/index.js';
+import { locate, read, startedAt } from './readers/index.js';
 import { skeleton } from './extract.js';
 import { build, lineageText } from './make.js';
 import { sync, log } from './sync.js';
@@ -18,6 +19,8 @@ const need = (cwd, ref) => {
   return e;
 };
 const home = () => os.homedir();
+// The session this command runs inside, when the host agent exposes it (Claude Code, Codex).
+const agentSession = () => process.env.CLAUDE_CODE_SESSION_ID || process.env.CLAUDE_SESSION_ID || process.env.CODEX_THREAD_ID || undefined;
 
 export const COMMANDS = {
   init: (cwd) => { store.init(cwd); return { out: 'initialised .baton/' }; },
@@ -28,7 +31,7 @@ export const COMMANDS = {
     const id = a.id || store.newId();
     store.writeBrief(cwd, id, stripExtract(build(cwd, { id, name: a.name, agent: a.agent, model: a.model, parent, sk: skeleton([]) })));
     // pending: the next agent hook adopts this brief for the new session so sync keeps it current.
-    store.register(cwd, { id, name: a.name, agent: a.agent, parent: parent?.id, sessionId: a.id, pending: a.id ? false : true, pendingFrom: process.env.CLAUDE_SESSION_ID || process.env.CODEX_THREAD_ID });
+    store.register(cwd, { id, name: a.name, agent: a.agent, parent: parent?.id, sessionId: a.id, pending: a.id ? false : true, pendingFrom: agentSession() });
     return { out: store.briefPath(cwd, id) };
   },
 
@@ -123,7 +126,15 @@ COMMANDS.takeover = (cwd, a, [ref]) => {
   const shown = COMMANDS.show(cwd, a, [ref]).out;
   const c = COMMANDS.check(cwd, a, [ref]);
   if (c.code) return { out: `${shown}\n--- check ---\n${c.out}`, code: c.code };
-  return { out: `${shown}\n--- check: ok ---\ncontinuation brief: ${COMMANDS.write(cwd, { name: a.name, agent: a.agent, model: a.model, parent: e.id }).out}\n${switchBlock(e, a, store.readBrief(cwd, e.id))}` };
+  const cont = COMMANDS.write(cwd, { name: a.name, agent: a.agent, model: a.model, parent: e.id }).out;
+  const contId = path.basename(cont, '.md');
+  // The source brief is now handed over: no later session may adopt it and have sync rewrite it.
+  if (e.pending) store.update(cwd, e.id, { pending: false });
+  // The continuation belongs to the session running takeover. Bind it now when that session is known;
+  // otherwise leave it pending as a takeover claim, which the arriving (already running) session adopts.
+  const sid = agentSession();
+  store.update(cwd, contId, sid ? { pending: false, pendingFrom: undefined, sessionId: sid } : { pendingFrom: undefined, takeover: true });
+  return { out: `${shown}\n--- check: ok ---\ncontinuation brief: ${cont}\n${switchBlock(e, a, store.readBrief(cwd, e.id))}` };
 };
 
 const k = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
@@ -172,10 +183,12 @@ async function hook(cwd0, stdin, argvJson, bg) {
   if (!sid || !store.exists(cwd)) return { out: '' };
   try {
     let e = store.resolve(cwd, sid);
+    const where = () => (input.transcript_path ? { agent: /[\\/]\.codex[\\/]/.test(input.transcript_path) ? 'codex' : 'claude', path: input.transcript_path } : locate(sid, { home: home() }));
+    if (e && !e.sourcePath) { const loc = where(); store.update(cwd, e.id, { sourcePath: loc.path, agent: loc.agent }); e = store.resolve(cwd, e.id); }
     if (!e) {
-      const loc = input.transcript_path ? { agent: /[\\/]\.codex[\\/]/.test(input.transcript_path) ? 'codex' : 'claude', path: input.transcript_path } : locate(sid, { home: home() });
-      const pend = store.adoptable(cwd, sid);
-      if (pend) { store.update(cwd, pend.id, { pending: false, sessionId: sid, sourcePath: loc.path, agent: loc.agent }); e = store.resolve(cwd, pend.id); }
+      const loc = where();
+      const pend = store.adoptable(cwd, sid, startedAt(loc.agent, loc.path));
+      if (pend) { store.update(cwd, pend.id, { pending: false, takeover: undefined, sessionId: sid, sourcePath: loc.path, agent: loc.agent }); e = store.resolve(cwd, pend.id); }
       else e = store.register(cwd, { id: sid, agent: loc.agent, sessionId: sid, sourcePath: loc.path });
     }
     await sync(cwd, e.id);

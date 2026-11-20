@@ -6,7 +6,39 @@ import { mainRoot } from './git.js';
 const dir = (cwd) => path.join(mainRoot(cwd), '.baton');
 const idxPath = (cwd) => path.join(dir(cwd), 'index.json');
 const load = (cwd) => JSON.parse(fs.readFileSync(idxPath(cwd), 'utf8'));
-const save = (cwd, i) => fs.writeFileSync(idxPath(cwd), JSON.stringify(i, null, 2) + '\n');
+// Atomic replace: a reader never sees a half-written index (hooks from parallel sessions share one store).
+const save = (cwd, i) => {
+  const tmp = `${idxPath(cwd)}.${process.pid}.${crypto.randomBytes(3).toString('hex')}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify(i, null, 2) + '\n');
+  fs.renameSync(tmp, idxPath(cwd));
+};
+
+// Read-modify-write under an exclusive lock, so concurrent register/update calls cannot drop each other's writes.
+const LOCK_WAIT_MS = 10000;
+const LOCK_STALE_MS = 30000; // a holder that died mid-write
+const nap = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+function mutate(cwd, fn) {
+  const lock = `${idxPath(cwd)}.lock`;
+  const deadline = Date.now() + LOCK_WAIT_MS;
+  let fd;
+  for (;;) {
+    try { fd = fs.openSync(lock, 'wx'); break; } catch (e) {
+      if (e.code !== 'EEXIST') throw e;
+      try { if (Date.now() - fs.statSync(lock).mtimeMs > LOCK_STALE_MS) { fs.rmSync(lock, { force: true }); continue; } } catch {}
+      if (Date.now() > deadline) throw new Error(`index locked: ${lock}`);
+      nap(5 + Math.random() * 20);
+    }
+  }
+  try {
+    const i = load(cwd);
+    const r = fn(i);
+    save(cwd, i);
+    return r;
+  } finally {
+    fs.closeSync(fd);
+    fs.rmSync(lock, { force: true });
+  }
+}
 
 export const storeDir = dir;
 export const exists = (cwd) => fs.existsSync(idxPath(cwd));
@@ -38,7 +70,7 @@ export function resolve(cwd, ref) {
 }
 
 export function register(cwd, o) {
-  const i = load(cwd);
+  return mutate(cwd, (i) => {
   const e = i.briefs[o.id] ?? { id: o.id, name: null, agent: null, parent: null, sessionId: null, sourcePath: null, sourceOffset: 0, children: [] };
   for (const k of ['name', 'agent', 'parent', 'sessionId', 'sourcePath', 'pending', 'pendingFrom']) if (o[k] !== undefined) e[k] = o[k];
   if (e.parent && !i.briefs[e.parent]) throw new Error(`unknown parent: ${e.parent}`);
@@ -46,19 +78,25 @@ export function register(cwd, o) {
   e.mission = e.parent ? i.briefs[e.parent].mission : e.id;
   if (e.parent && !i.briefs[e.parent].children.includes(e.id)) i.briefs[e.parent].children.push(e.id);
   e.updated = new Date().toISOString();
+  e.created ??= e.updated;
   i.briefs[e.id] = e;
-  save(cwd, i);
   return e;
+  });
 }
 
 export function update(cwd, id, patch) {
-  const i = load(cwd);
-  Object.assign(i.briefs[id], patch, { updated: new Date().toISOString() });
-  save(cwd, i);
+  mutate(cwd, (i) => { Object.assign(i.briefs[id], patch, { updated: new Date().toISOString() }); });
 }
 
 // A pending brief is adopted by the next *other* session within an hour (not by its writer, not much later).
-export const adoptable = (cwd, sid) => all(cwd).find((e) => e.pending && e.pendingFrom !== sid && Date.now() - Date.parse(e.updated) < 3600000);
+// "Other" is decided by when the session began: one that started before the handover was written is the
+// writer (or an unrelated older session), whatever its id. pendingFrom covers sessions whose start is unknown.
+// A takeover claim (continuation made by `takeover` where the session id was unknown) is the reverse case: the
+// arriving session is already running, so it is exempt from the began-after rule. Newest claim wins.
+export const adoptable = (cwd, sid, started) => all(cwd)
+  .filter((e) => e.pending && e.pendingFrom !== sid && Date.now() - Date.parse(e.updated) < 3600000
+    && (e.takeover || !started || Date.parse(started) >= Date.parse(e.created || e.updated)))
+  .sort((x, y) => Date.parse(y.created || y.updated) - Date.parse(x.created || x.updated))[0];
 
 export function lineage(cwd, id) {
   const i = load(cwd);
