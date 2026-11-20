@@ -6,7 +6,7 @@ import { mainRoot } from './git.js';
 const dir = (cwd) => path.join(mainRoot(cwd), '.baton');
 const idxPath = (cwd) => path.join(dir(cwd), 'index.json');
 const load = (cwd) => JSON.parse(fs.readFileSync(idxPath(cwd), 'utf8'));
-// Atomic replace: a reader never sees a half-written index (hooks from parallel sessions share one store).
+// Atomic replace: a reader never sees a half-written index (parallel agents and worktrees share one store).
 const save = (cwd, i) => {
   const tmp = `${idxPath(cwd)}.${process.pid}.${crypto.randomBytes(3).toString('hex')}.tmp`;
   fs.writeFileSync(tmp, JSON.stringify(i, null, 2) + '\n');
@@ -72,7 +72,7 @@ export function resolve(cwd, ref) {
 export function register(cwd, o) {
   return mutate(cwd, (i) => {
   const e = i.briefs[o.id] ?? { id: o.id, name: null, agent: null, parent: null, sessionId: null, sourcePath: null, sourceOffset: 0, children: [] };
-  for (const k of ['name', 'agent', 'parent', 'sessionId', 'sourcePath', 'pending', 'pendingFrom']) if (o[k] !== undefined) e[k] = o[k];
+  for (const k of ['name', 'agent', 'parent', 'sessionId', 'sourcePath']) if (o[k] !== undefined) e[k] = o[k];
   if (e.parent && !i.briefs[e.parent]) throw new Error(`unknown parent: ${e.parent}`);
   if (o.name) for (const x of Object.values(i.briefs)) if (x.id !== e.id && x.name === o.name) x.name = null;
   e.mission = e.parent ? i.briefs[e.parent].mission : e.id;
@@ -87,16 +87,6 @@ export function register(cwd, o) {
 export function update(cwd, id, patch) {
   mutate(cwd, (i) => { Object.assign(i.briefs[id], patch, { updated: new Date().toISOString() }); });
 }
-
-// A pending brief is adopted by the next *other* session within an hour (not by its writer, not much later).
-// "Other" is decided by when the session began: one that started before the handover was written is the
-// writer (or an unrelated older session), whatever its id. pendingFrom covers sessions whose start is unknown.
-// A takeover claim (continuation made by `takeover` where the session id was unknown) is the reverse case: the
-// arriving session is already running, so it is exempt from the began-after rule. Newest claim wins.
-export const adoptable = (cwd, sid, started) => all(cwd)
-  .filter((e) => e.pending && e.pendingFrom !== sid && Date.now() - Date.parse(e.updated) < 3600000
-    && (e.takeover || !started || Date.parse(started) >= Date.parse(e.created || e.updated)))
-  .sort((x, y) => Date.parse(y.created || y.updated) - Date.parse(x.created || x.updated))[0];
 
 export function lineage(cwd, id) {
   const i = load(cwd);

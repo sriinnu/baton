@@ -8,11 +8,11 @@ import { COMMANDS } from '../plugin/src/commands.js';
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
 
-test('plugin.json and hooks.json parse; every hook runs the bundled `baton sync --hook` and never fails the agent', () => {
-  assert.equal(JSON.parse(read('plugin/.claude-plugin/plugin.json')).name, 'baton');
-  const h = JSON.parse(read('plugin/hooks/hooks.json')).hooks;
-  assert.deepEqual(Object.keys(h).sort(), ['PreCompact', 'Stop', 'SubagentStop']);
-  for (const e of Object.values(h).flat().flatMap((x) => x.hooks)) assert.equal(e.command, 'node "${CLAUDE_PLUGIN_ROOT}/cli/baton.js" sync --hook 2>/dev/null || true');
+test('plugin.json parses and the plugin ships no hooks: baton runs only when asked', () => {
+  const p = JSON.parse(read('plugin/.claude-plugin/plugin.json'));
+  assert.equal(p.name, 'baton');
+  assert.ok(!p.hooks, 'no hooks in plugin.json');
+  assert.ok(!fs.existsSync(path.join(root, 'plugin', 'hooks')), 'no plugin/hooks/');
 });
 test("every backticked `baton <cmd>` in rules, skills, prompts, README exists", () => {
   const files = ["rules/AGENTS.snippet.md", "plugin/skills/handover/SKILL.md", "plugin/skills/takeover/SKILL.md", "plugin/skills/switch/SKILL.md", "codex/handover.md", "codex/takeover.md", "README.md"];

@@ -6,7 +6,7 @@
 - [[Inheritance]]
 - [[Switching-Models]]
 - [[Agents-and-Readers]]
-- [[Hooks-and-Sync]]
+- [[Sync-and-Distill]]
 - [[Safety]]
 - [[Contributing-a-Reader]]
 - [[FAQ]]

@@ -12,7 +12,7 @@ test('sync fills prose, State from git, advances offset; second sync is a no-op'
   const { dir, home } = setup();
   baton(dir, ['from', CID, '--name', 's'], { HOME: home });
   const a = baton(dir, ['sync', 's'], env(home));
-  assert.equal(a.out, 'updated', a.err);
+  assert.equal(a.out, 'updated (1 model call)', a.err);
   const t = fs.readFileSync(`${dir}/.baton/briefs/${CID}.md`, 'utf8');
   assert.match(t, /## Done\n- did the thing/);
   assert.match(t, /## State\nbranch: /);
@@ -32,34 +32,36 @@ test('model changing Mission is ignored; Mission and State stay ours', () => {
   assert.equal(mission(after), mission(before));
   assert.ok(!after.includes('HIJACKED'));
 });
-test('hook: runner failure leaves brief, logs, exits 0', () => {
+test('sync: runner failure → exit 1, brief unchanged', () => {
   const { dir, home } = setup();
-  const r = baton(dir, ['sync', '--hook'], env(home, { BATON_FAKE: 'fail' }), JSON.stringify({ session_id: CID, cwd: dir }));
+  baton(dir, ['from', CID, '--name', 's'], { HOME: home });
+  const before = fs.readFileSync(`${dir}/.baton/briefs/${CID}.md`, 'utf8');
+  const r = baton(dir, ['sync', 's'], env(home, { BATON_FAKE: 'fail' }));
+  assert.equal(r.code, 1);
+  assert.match(r.err, /exited 1/);
+  assert.equal(fs.readFileSync(`${dir}/.baton/briefs/${CID}.md`, 'utf8'), before);
+});
+test('legacy `sync --hook` (old hooks, old Codex notify) does nothing: no model call, no brief, exit 0', () => {
+  const { dir, home } = setup();
+  const calls = `${home}/calls`;
+  const r = baton(dir, ['sync', '--hook'], env(home, { BATON_FAKE_CALLS: calls }), JSON.stringify({ session_id: CID, cwd: dir }));
   assert.equal(r.code, 0);
-  assert.match(fs.readFileSync(`${dir}/.baton/sync.log`, 'utf8'), /exited 1/);
+  assert.equal(r.out, '');
+  assert.ok(!fs.existsSync(calls), 'no model call');
   assert.ok(!fs.existsSync(`${dir}/.baton/briefs/${CID}.md`));
+  assert.ok(!fs.existsSync(`${dir}/.baton/sync.log`));
 });
-test('hook: registers + syncs a new session; BATON_SYNC set → no-op (no recursion)', () => {
-  const { dir, home } = setup();
-  assert.equal(baton(dir, ['sync', '--hook'], env(home, { BATON_SYNC: '1' }), JSON.stringify({ session_id: CID, cwd: dir })).code, 0);
-  assert.ok(!fs.existsSync(`${dir}/.baton/briefs/${CID}.md`));
-  baton(dir, ['sync', '--hook'], env(home), JSON.stringify({ session_id: CID, cwd: dir }));
-  assert.ok(fs.existsSync(`${dir}/.baton/briefs/${CID}.md`));
-});
-test('hook is a no-op in a repo without .baton/', () => {
-  const r = repo(); const home = homeCopy();
-  assert.equal(baton(r.dir, ['sync', '--hook'], env(home), JSON.stringify({ session_id: CID, cwd: r.dir })).code, 0);
-  assert.ok(!fs.existsSync(`${r.dir}/.baton`));
-});
-test('hook adopts a pending continuation brief: same mission, parent kept', () => {
-  const { dir, home } = setup();
-  baton(dir, ['write', '--id', 'r1', '--name', 'root']);
-  const w = baton(dir, ['write', '--parent', 'root', '--name', 'cont']);
-  baton(dir, ['sync', '--hook'], env(home), JSON.stringify({ session_id: CID, cwd: dir }));
-  const ls = baton(dir, ['ls']).out;
-  assert.match(ls, /r1 \(root\)[^\n]*\n  [0-9a-f]{8} \(cont\)/);
-  assert.ok(!ls.includes(CID));
-  assert.match(fs.readFileSync(w.out, 'utf8'), /## Done\n- did the thing/);
+test('a long session is distilled in parts, one model call each; the first goal survives the budget', async () => {
+  const { chunks, transcriptText } = await import('../plugin/src/sync.js');
+  const turns = [{ role: 'user', text: 'GOAL: fix the ledger' }];
+  for (let n = 0; n < 3000; n++) turns.push({ role: 'assistant', text: `step ${n} ${'x'.repeat(200)}` });
+  const parts = chunks(transcriptText(turns), 60000, 360000);
+  assert.ok(parts.length >= 6 && parts.length <= 8, String(parts.length));
+  assert.ok(parts.every((p) => p.length <= 60000));
+  assert.match(parts[0], /^USER: GOAL: fix the ledger/);
+  assert.match(parts[0], /earlier activity omitted/);
+  assert.match(parts.at(-1), /step 2999/);
+  assert.deepEqual(chunks('short'), ['short']);
 });
 test('held lock → skipped', () => {
   const { dir, home } = setup();

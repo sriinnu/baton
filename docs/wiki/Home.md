@@ -10,7 +10,7 @@ A **brief** is one small markdown file per piece of work (mission, decisions, do
 - [[Inheritance]]
 - [[Switching-Models]]
 - [[Agents-and-Readers]]
-- [[Hooks-and-Sync]]
+- [[Sync-and-Distill]]
 - [[Safety]]
 - [[Contributing-a-Reader]]
 - [[FAQ]]

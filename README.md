@@ -69,10 +69,9 @@ claude plugin list                              # baton@sriinnu-baton should sho
 
 Or upload it in claude.ai (Settings, Customize, Plugins): run `npm run pack:plugin`, then upload `dist/baton-plugin.zip`.
 
-Restart Claude Code / Claude Desktop. You get `/baton:handover`, `/baton:takeover`, `/baton:switch` and the sync hooks.
+Restart Claude Code / Claude Desktop. You get `/baton:handover`, `/baton:takeover` and `/baton:switch`. The plugin installs no hooks: baton runs only when you, or the agent on your behalf, call it.
 
 - The CLI and the Desktop **Code** tab share `~/.claude` (`%USERPROFILE%\.claude` on Windows), so one install covers both. Desktop's chat/Cowork mode does not load these plugins.
-- On Windows, hooks run through Git Bash (installed with Git for Windows).
 - WSL has its own `~/.claude`: install again inside WSL if you use Claude there.
 
 ### 3. Codex (CLI and Codex app; both use `~/.codex`)
@@ -95,13 +94,7 @@ foreach ($s in 'handover','takeover','switch') {
 
 Older Codex (custom prompts): copy `codex/*.md` into `~/.codex/prompts/` (create the folder first).
 
-Sync hook: add this line to `~/.codex/config.toml` **at the top, before any `[section]`** (TOML puts anything after a header inside that section):
-
-```toml
-notify = ["baton", "sync", "--hook"]
-```
-
-Restart Codex.
+Restart Codex. No `notify` line is needed (baton ≤ 0.1 used one; if you still have `notify = ["baton", "sync", "--hook"]`, remove it: it now does nothing).
 
 ### 4. Any other agent
 
@@ -113,9 +106,9 @@ Paste [`rules/AGENTS.snippet.md`](rules/AGENTS.snippet.md) into `AGENTS.md` / `C
 cd ~/code/baton && git pull        # CLI updates immediately (linked)
 ```
 
-In Claude Code run `/reload-plugins` (or restart). Uninstall: `claude plugin uninstall baton@sriinnu-baton`, `npm unlink -g @sriinnu/baton`, delete `~/.codex/skills/baton-*` and the `notify` line.
+In Claude Code run `/reload-plugins` (or restart). Uninstall: `claude plugin uninstall baton@sriinnu-baton`, `npm unlink -g @sriinnu/baton` and delete `~/.codex/skills/baton-*`.
 
-Notes: hooks do nothing unless `baton` is on PATH and the repo has `.baton/`. Windows works but has had less testing.
+Note: Windows works but has had less testing.
 
 ## Use
 
@@ -130,6 +123,17 @@ baton handover --name auth-fix     # writes the brief; the agent fills the prose
 ```sh
 baton takeover auth-fix --name auth-fix-2
 ```
+
+**Picking up a session nobody handed over** (the old agent is gone, or ran out of context):
+
+```sh
+baton takeover codex "Guardian review"     # a Codex thread by name (exact first, newest wins)
+baton takeover claude 7e8a8b31             # a Claude Code session by id or id prefix
+baton takeover claude last                 # the newest Claude session in this repo
+baton takeover codex last --distill        # …and have the cheap model write the brief once
+```
+
+Names are Codex thread names and Claude Code session titles; a partial name that matches several sessions lists them. Archived Codex threads (`~/.codex/archived_sessions`, zstd) are found too (Node ≥ 22.15). Without `--distill` you get the free mechanical extract to fill; with it, one cheap-model pass reads the whole session (a long one in parts, one call per ~60k chars, about seven at most).
 
 `takeover` shows the brief, then **checks it against reality before you touch anything**: has git moved, is the working tree what the brief says, does the brief's `verify:` command still pass (shown, and run only with `--run`). Clean → your continuation brief is created (same mission, parent recorded). Drift → exit 2; report to the human first. Even family washes their feet before entering.
 
@@ -196,30 +200,34 @@ id: 019e032c-…   name: auth-fix   agent: codex   parent: null   mission: 019e0
 
 Soft cap 150 lines. Briefs are distillations, never transcripts.
 
-## Always current
+## Only when asked
 
-Hooks run `baton sync --hook` on Claude Code `Stop`, `PreCompact`, `SubagentStop` (or Codex `notify`). A cheap model refreshes the prose, called through the agent's own CLI, so **no API keys**. Configure in `.baton/config.json`:
+baton never runs on a turn. The agent that did the work writes the brief at handover, while its cache is warm: that is the cheapest and best brief there is. A model is only called when you ask:
+
+- `baton takeover … --distill`: once, for a session that ended without a handover.
+- `baton sync <ref>`: refresh a brief from the new activity in its session since the last sync. A brief written with `handover` inside Claude Code or Codex is bound to that session (`CLAUDE_CODE_SESSION_ID` / `CODEX_THREAD_ID`), so `sync` knows where to read.
+
+The model is called through the agent's own CLI, so **no API keys**. Configure in `.baton/config.json`:
 
 ```json
 { "runner": "claude", "model": "haiku" }
 ```
 
-or `{ "runner": "codex", "model": "<mini model>" }`. The model can never change Mission or State (its edits to them are ignored). Sync runs in the background, so your agent never waits on it, and a failing model never blocks anything: errors go to `.baton/sync.log` and the hook exits 0. Hooks only act in repos where you ran `baton init`.
-
-**Cost:** each sync is one small model call (Haiku by default), made when a turn ends. To stop it, remove the hooks (disable the plugin's hooks, or unset `notify` for Codex) and refresh by hand with `baton sync <ref>`.
+or `{ "runner": "codex", "model": "<mini model>" }`. The model can never change Mission or State (its edits to them are ignored, State is re-measured from git), and a failing model leaves the brief as it was.
 
 ## Commands
 
 | | |
 |---|---|
 | `handover [--name n] [--parent ref]` | leaving: new brief (alias `write`) |
-| `takeover <ref> [--name n]` | arriving: show, check, start continuation |
+| `takeover [claude\|codex] <ref> [--name n] [--distill]` | arriving: show, check, start continuation. `<ref>` may also be a session id, id prefix, name or `last` |
 | `gist <ref>` | the distilled brief + drift since written (alias `show`) |
 | `check <ref> [--run]` | the sanity check alone; exit 0 ok, 2 drift, 1 unfilled / verify failed. `verify:` runs only with `--run` (a brief can come from anywhere) |
 | `from <session-id> \| --path f` | brief from a past session |
 | `child <ref> --task "…" [--agent-id id]` | brief for a subagent / new session |
 | `fold <child>` | fold a finished child into its parent |
-| `sync <ref>` / `sync --hook` | refresh prose with the cheap model |
+| `sync <ref>` | refresh prose from the session's new activity with the cheap model |
+| `doctor [--limit n]` | run the readers on your newest real sessions; exit 1 if one comes back empty |
 | `ls` | lineage tree |
 
 `<ref>` is a brief id, a name, or a session id.
@@ -231,12 +239,12 @@ All worktrees of a repo share the main checkout's `.baton/` (a fresh worktree ha
 ## Safety
 
 - Transcripts are untrusted data: never executed. API keys, tokens and private keys are redacted before anything is written or sent to a model.
-- The sync model runs with `BATON_SYNC=1` so agent hooks cannot recurse.
+- The model call runs with `BATON_SYNC=1`, so your own agent hooks can recognise and skip it.
 - `.baton/` is gitignored by default; commit it deliberately if you want to share briefs.
 
 ## Status
 
-v0.1, private. Session readers: Claude Code (`~/.claude/projects`), Codex (`~/.codex/sessions`), generic `--path`. Another agent is a ~30-line reader in `plugin/src/readers/`. Covered by 47 tests against fixture transcripts and a fake model; the live Claude Code plugin, hooks and Codex `notify` wiring are still being exercised, and nothing has run against a real `claude -p` or `codex exec` yet.
+v0.1, private. Session readers: Claude Code (`~/.claude/projects`), Codex (`~/.codex/sessions`), generic `--path`. Another agent is a ~30-line reader in `plugin/src/readers/`. Covered by 60 tests against fixture transcripts and a fake model, plus `baton doctor` against real sessions. Live-tested: Claude Code ↔ Codex handover and takeover, and `--distill` with `claude -p --model haiku` on a real 2 MB Codex session; `codex exec` as the runner has not been exercised yet.
 
 ## Playground
 

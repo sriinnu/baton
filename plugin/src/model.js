@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 
-// load-bearing: BATON_SYNC marks the child so agent hooks don't re-trigger sync recursively.
+// BATON_SYNC marks the child model call, so a user's own agent hooks can tell it apart and skip it.
 export function runModel(prompt, cfg) {
   const fake = process.env.BATON_RUNNER;
   const [cmd, args] = fake ? [fake, []] : cfg.runner === 'codex' ? ['codex', ['exec', '-m', cfg.model, '-']] : ['claude', ['-p', '--model', cfg.model]];

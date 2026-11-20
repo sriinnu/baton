@@ -5,7 +5,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ## [Unreleased]
 
+### Changed
+- **baton runs only when called.** The plugin's `Stop`/`PreCompact`/`SubagentStop` hooks and the Codex `notify` setup are gone, along with per-turn sync and pending-brief adoption. The agent writes the brief at handover from its warm cache; a model is called only by `baton sync <ref>` or `takeover --distill`. `sync --hook` is a silent no-op, so an old hook line cannot break an agent.
+- `handover` binds the brief to the writing session (`CLAUDE_CODE_SESSION_ID` / `CODEX_THREAD_ID`) so `sync` can refresh it later.
+- `sync` reads the conversation itself (user and agent text, one line per tool, failure tails) instead of the skeleton, in parts of ~60k chars with one model call each; past ~360k chars it keeps the first goal and the most recent activity.
+
 ### Added
+- `baton takeover [claude|codex] <ref>`: `<ref>` can be a session id, id prefix, a session name (Codex thread name, Claude Code title; exact match first, newest wins; an ambiguous partial lists candidates), or `last` (the newest session whose cwd is this repo). A session with no brief gets one from the extract; `--distill` fills it with one cheap-model pass over the whole session.
+- Archived Codex threads (`~/.codex/archived_sessions/*.jsonl.zst`) are found and read (Node ≥ 22.15).
+- `baton doctor`.
 - `baton takeover` prints a `--- switch ---` block: previous vs new provider and model, old session context vs brief size, tokens not re-sent cold (estimate), and cache read/write totals from the old transcript.
 - `--model` and `--provider` options. Briefs record the model that wrote them (`model:` in the frontmatter). The skills pass the agent's own model id.
 - Session readers report the model that produced a transcript (Claude Code and Codex).

@@ -1,14 +1,12 @@
-import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
-import path from 'node:path';
 import { parseBrief, serializeBrief, hasFillMarkers } from './brief.js';
-import { measure, parseState, drift } from './git.js';
+import { measure, parseState, drift, mainRoot } from './git.js';
 import * as store from './store.js';
-import { locate, read, startedAt } from './readers/index.js';
+import { locate, read, find, AGENTS } from './readers/index.js';
 import { skeleton } from './extract.js';
 import { build, lineageText } from './make.js';
-import { sync, log } from './sync.js';
+import { sync } from './sync.js';
 import { check } from './check.js';
 import { doctor } from './doctor.js';
 
@@ -30,8 +28,8 @@ export const COMMANDS = {
     const parent = a.parent ? need(cwd, a.parent) : null;
     const id = a.id || store.newId();
     store.writeBrief(cwd, id, stripExtract(build(cwd, { id, name: a.name, agent: a.agent, model: a.model, parent, sk: skeleton([]) })));
-    // pending: the next agent hook adopts this brief for the new session so sync keeps it current.
-    store.register(cwd, { id, name: a.name, agent: a.agent, parent: parent?.id, sessionId: a.id, pending: a.id ? false : true, pendingFrom: agentSession() });
+    // The session writing the brief is its source, when the host agent exposes its id: `baton sync` can then refresh it.
+    store.register(cwd, { id, name: a.name, agent: a.agent, parent: parent?.id, sessionId: a.id || agentSession() });
     return { out: store.briefPath(cwd, id) };
   },
 
@@ -102,10 +100,12 @@ export const COMMANDS = {
     return { out: lines.join('\n') || '(empty)' };
   },
 
-  async sync(cwd, a, [ref], stdin) {
-    if (a.hook) return hook(cwd, stdin, process.argv[process.argv.length - 1], a.bg);
+  async sync(cwd, a, [ref]) {
+    // baton <= 0.1 ran `sync --hook` from agent hooks on every turn. That is gone; an old hook or Codex notify line
+    // still calling it must not fail the agent, so it does nothing.
+    if (a.hook) return { out: '' };
     const r = await sync(cwd, need(cwd, ref).id);
-    return { out: r.updated ? 'updated' : `skipped: ${r.reason}` };
+    return { out: r.updated ? `updated (${r.calls} model call${r.calls === 1 ? '' : 's'})` : `skipped: ${r.reason}` };
   },
 
   doctor(cwd, a) {
@@ -120,20 +120,37 @@ export const COMMANDS = {
 // handover = leave (write); gist = the distilled brief (show); takeover = arrive: show, check, then start the continuation.
 COMMANDS.handover = COMMANDS.write;
 COMMANDS.gist = COMMANDS.show;
-COMMANDS.takeover = (cwd, a, [ref]) => {
-  const e = store.resolve(cwd, ref);
-  if (!e || !store.readBrief(cwd, e.id)) return { out: `${COMMANDS.from(cwd, a, [ref]).out}\nfill it, then run \`baton takeover ${ref}\` again`, code: 1 };
-  const shown = COMMANDS.show(cwd, a, [ref]).out;
-  const c = COMMANDS.check(cwd, a, [ref]);
+// takeover [claude|codex] <ref>: ref is a brief (name/id), or a session (id, id prefix, name, "last").
+// A session with no brief yet gets one: the extract (no model) for the arriving agent to fill, or with --distill
+// the cheap model reads the whole session once and fills it.
+COMMANDS.takeover = async (cwd, a, args) => {
+  if (!store.exists(cwd)) throw new Error('not initialised; run `baton init`');
+  const [agent, ref] = AGENTS.includes(args[0]) && args[1] ? [args[0], args[1]] : [undefined, args[0]];
+  if (!ref) throw new Error('usage: baton takeover [claude|codex] <brief | session id | name | last> [--name n] [--distill]');
+  let e = agent ? null : store.resolve(cwd, ref);
+  let what = e && `brief ${e.name || e.id}`;
+  if (!e) {
+    const s = find(ref, { home: home(), agent, roots: [...new Set([cwd, mainRoot(cwd)])] });
+    e = store.resolve(cwd, s.id) || { id: s.id, sessionId: s.id };
+    what = `${s.agent} session ${s.id}${s.title ? ` "${s.title}"` : ''}`;
+  }
+  let started = false;
+  if (!store.readBrief(cwd, e.id)) {
+    COMMANDS.from(cwd, {}, [e.sessionId || e.id]);
+    e = store.resolve(cwd, e.sessionId || e.id);
+    started = true;
+  }
+  if (a.distill && hasFillMarkers(store.readBrief(cwd, e.id))) {
+    const r = await sync(cwd, e.id, { full: true });
+    if (!r.updated) return { out: `${store.briefPath(cwd, e.id)}\ndistill skipped: ${r.reason}`, code: 1 };
+  } else if (started) {
+    return { out: `${store.briefPath(cwd, e.id)}\nbrief started from ${what}: fill the <!-- fill --> sections from its ## Extract (then delete Extract), or rerun with --distill to have the cheap model read the whole session; then run \`baton takeover ${e.id}\` again`, code: 1 };
+  }
+  const shown = COMMANDS.show(cwd, a, [e.id]).out;
+  const c = COMMANDS.check(cwd, a, [e.id]);
   if (c.code) return { out: `${shown}\n--- check ---\n${c.out}`, code: c.code };
+  // The continuation belongs to the session running takeover (write binds it when the agent exposes its id).
   const cont = COMMANDS.write(cwd, { name: a.name, agent: a.agent, model: a.model, parent: e.id }).out;
-  const contId = path.basename(cont, '.md');
-  // The source brief is now handed over: no later session may adopt it and have sync rewrite it.
-  if (e.pending) store.update(cwd, e.id, { pending: false });
-  // The continuation belongs to the session running takeover. Bind it now when that session is known;
-  // otherwise leave it pending as a takeover claim, which the arriving (already running) session adopts.
-  const sid = agentSession();
-  store.update(cwd, contId, sid ? { pending: false, pendingFrom: undefined, sessionId: sid } : { pendingFrom: undefined, takeover: true });
   return { out: `${shown}\n--- check: ok ---\ncontinuation brief: ${cont}\n${switchBlock(e, a, store.readBrief(cwd, e.id))}` };
 };
 
@@ -164,34 +181,3 @@ function tokenLine(e, text) {
 }
 
 const stripExtract = (t) => { const b = parseBrief(t); delete b.sections.Extract; return serializeBrief(b); };
-
-// Hook mode never fails the host agent: errors go to .baton/sync.log, exit 0.
-async function hook(cwd0, stdin, argvJson, bg) {
-  if (process.env.BATON_SYNC) return { out: '' };
-  if (!bg && !process.env.BATON_FG) { // load-bearing: never make the agent wait on a model call
-    const c = spawn(process.execPath, [process.argv[1], 'sync', '--hook', '--bg'], { cwd: cwd0, detached: true, stdio: ['pipe', 'ignore', 'ignore'] });
-    c.on('error', () => {});
-    c.stdin.on('error', () => {});
-    c.stdin.end(stdin || argvJson || '{}');
-    c.unref();
-    return { out: '' };
-  }
-  let input = {};
-  try { input = JSON.parse(stdin || argvJson || '{}'); } catch {}
-  const cwd = input.cwd || cwd0;
-  const sid = input.session_id || input['thread-id'];
-  if (!sid || !store.exists(cwd)) return { out: '' };
-  try {
-    let e = store.resolve(cwd, sid);
-    const where = () => (input.transcript_path ? { agent: /[\\/]\.codex[\\/]/.test(input.transcript_path) ? 'codex' : 'claude', path: input.transcript_path } : locate(sid, { home: home() }));
-    if (e && !e.sourcePath) { const loc = where(); store.update(cwd, e.id, { sourcePath: loc.path, agent: loc.agent }); e = store.resolve(cwd, e.id); }
-    if (!e) {
-      const loc = where();
-      const pend = store.adoptable(cwd, sid, startedAt(loc.agent, loc.path));
-      if (pend) { store.update(cwd, pend.id, { pending: false, takeover: undefined, sessionId: sid, sourcePath: loc.path, agent: loc.agent }); e = store.resolve(cwd, pend.id); }
-      else e = store.register(cwd, { id: sid, agent: loc.agent, sessionId: sid, sourcePath: loc.path });
-    }
-    await sync(cwd, e.id);
-  } catch (err) { log(cwd, String(err.message || err)); }
-  return { out: '' };
-}

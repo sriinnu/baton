@@ -10,7 +10,7 @@ const plugin = path.join(root, 'plugin');
 const zip = path.join(root, 'dist', 'baton-plugin.zip');
 fs.mkdirSync(path.dirname(zip), { recursive: true });
 fs.rmSync(zip, { force: true });
-const items = ['.claude-plugin', 'skills', 'hooks', 'cli', 'src', 'package.json', 'LICENSE'];
+const items = ['.claude-plugin', 'skills', 'cli', 'src', 'package.json', 'LICENSE'];
 const isZip = () => fs.existsSync(zip) && fs.readFileSync(zip).subarray(0, 2).toString() === 'PK';
 try { execFileSync('tar', ['-a', '-c', '-f', zip, ...items], { cwd: plugin, stdio: 'pipe' }); } catch {} // Windows/bsdtar
 if (!isZip()) { fs.rmSync(zip, { force: true }); execFileSync('zip', ['-rq', zip, ...items], { cwd: plugin }); } // GNU tar can't zip

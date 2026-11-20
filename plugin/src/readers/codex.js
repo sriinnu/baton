@@ -1,4 +1,4 @@
-import fs from 'node:fs';
+import { readText } from './text.js';
 
 // Two on-disk formats, picked per file:
 //  legacy (codex-cli <= 0.13x): event_msg/user_message|agent_message, response_item/function_call(+_output),
@@ -81,5 +81,5 @@ export function parse(content, from = 0) {
 
 // --- node-only ---
 export function read(file, from = 0) {
-  return { ...parse(fs.readFileSync(file, 'utf8'), from), subagents: [] };
+  return { ...parse(readText(file), from), subagents: [] };
 }
