@@ -1,0 +1,42 @@
+{
+  "name": "baton",
+  "version": "0.3.1",
+  "description": "Pass work between AI coding agents through short, git-checked handover briefs instead of resending the whole conversation. Bundles the baton CLI; needs Node 20+ and git.",
+  "author": {
+    "name": "Srinivas Pendela",
+    "url": "https://github.com/sriinnu"
+  },
+  "homepage": "https://github.com/sriinnu/baton#readme",
+  "repository": "https://github.com/sriinnu/baton",
+  "license": "MIT",
+  "keywords": [
+    "handover",
+    "takeover",
+    "context",
+    "briefs",
+    "multi-agent",
+    "codex",
+    "session",
+    "model-switch"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "baton",
+    "shortDescription": "Hand work between agents with git-checked briefs",
+    "longDescription": "baton writes a short brief for the current work: mission, decisions, done, next, dead ends and the git state, including the uncommitted diff. The next agent, model or session reads it and checks it against git before continuing, instead of re-reading the whole history.\n\nSkills: handover (write a brief), takeover (continue from a brief, or from a Claude Code or Codex session by id, name or \"last\") and switch (move to another model cheaply). baton runs only when called, installs no hooks, redacts secrets, and makes no network calls of its own.",
+    "developerName": "sriinnu",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Hand this work over so another agent can continue.",
+      "Take over from the last Claude Code session.",
+      "Switch to a cheaper model without losing context."
+    ],
+    "brandColor": "#f5a524",
+    "logo": "./assets/logo.svg",
+    "composerIcon": "./assets/logo.svg"
+  }
+}

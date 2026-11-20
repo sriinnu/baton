@@ -15,7 +15,7 @@ test('plugin.json parses and the plugin ships no hooks: baton runs only when ask
   assert.ok(!fs.existsSync(path.join(root, 'plugin', 'hooks')), 'no plugin/hooks/');
 });
 test("every backticked `baton <cmd>` in rules, skills, prompts, README exists", () => {
-  const files = ["rules/AGENTS.snippet.md", "plugin/skills/handover/SKILL.md", "plugin/skills/takeover/SKILL.md", "plugin/skills/switch/SKILL.md", "codex/handover.md", "codex/takeover.md", "README.md"];
+  const files = ["rules/AGENTS.snippet.md", "plugin/skills/handover/SKILL.md", "plugin/skills/takeover/SKILL.md", "plugin/skills/switch/SKILL.md", "directory/skills/handover/SKILL.md", "directory/skills/takeover/SKILL.md", "directory/skills/switch/SKILL.md", "README.md"];
   for (const f of files) for (const m of read(f).matchAll(/`baton ([a-z]+)/g)) assert.ok(m[1] in COMMANDS, `${f}: baton ${m[1]}`);
 });
 test('rules snippet is ≤ 40 lines', () => assert.ok(read('rules/AGENTS.snippet.md').split('\n').length <= 40));

@@ -17,7 +17,7 @@ const json = (p) => JSON.parse(fs.readFileSync(path.join(root, p), 'utf8'));
 
 const v = json('package.json').version;
 if (!/^\d+\.\d+\.\d+$/.test(v)) fail(`package.json version ${v} is not x.y.z`);
-const others = { 'plugin/.claude-plugin/plugin.json': json('plugin/.claude-plugin/plugin.json').version, '.claude-plugin/marketplace.json': json('.claude-plugin/marketplace.json').plugins.find((p) => p.name === 'baton')?.version, 'directory/.claude-plugin/plugin.json': json('directory/.claude-plugin/plugin.json').version };
+const others = { 'plugin/.claude-plugin/plugin.json': json('plugin/.claude-plugin/plugin.json').version, '.claude-plugin/marketplace.json': json('.claude-plugin/marketplace.json').plugins.find((p) => p.name === 'baton')?.version, 'directory/.claude-plugin/plugin.json': json('directory/.claude-plugin/plugin.json').version, 'plugin/.codex-plugin/plugin.json': json('plugin/.codex-plugin/plugin.json').version };
 for (const [f, x] of Object.entries(others)) if (x !== v) fail(`${f} is ${x}, package.json is ${v}: bump all versions together`);
 if (!new RegExp(`^## \\[${v.replace(/\./g, '\\.')}\\] - \\d{4}-\\d{2}-\\d{2}$`, 'm').test(fs.readFileSync(path.join(root, 'CHANGELOG.md'), 'utf8'))) fail(`CHANGELOG.md has no "## [${v}] - <date>" entry`);
 

@@ -1,6 +1,6 @@
 {
   "name": "agent-baton",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Pass work between AI coding agents through short, git-checked handover briefs. Skills for the baton CLI (npm @sriinnu/baton, Node 20+).",
   "author": {
     "name": "Srinivas Pendela",

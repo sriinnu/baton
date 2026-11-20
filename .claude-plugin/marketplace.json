@@ -9,7 +9,7 @@
       "name": "baton",
       "source": "./plugin",
       "description": "Pass work between AI coding agents: distilled, inheritable briefs. Bundles the baton CLI; needs Node 20+.",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "author": {
         "name": "Srinivas Pendela",
         "url": "https://github.com/sriinnu"

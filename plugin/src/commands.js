@@ -19,6 +19,9 @@ const need = (cwd, ref) => {
 const home = () => os.homedir();
 // The session this command runs inside, when the host agent exposes it (Claude Code, Codex).
 const agentSession = () => process.env.CLAUDE_CODE_SESSION_ID || process.env.CLAUDE_SESSION_ID || process.env.CODEX_THREAD_ID || undefined;
+// The agent baton runs inside, from the env var its host sets, so a skill shared by Claude Code and
+// Codex never has to hard-code `--agent` (it used to say `--agent claude`, mislabelling Codex briefs).
+const hostAgent = () => (process.env.CODEX_THREAD_ID ? 'codex' : process.env.CLAUDE_CODE_SESSION_ID || process.env.CLAUDE_SESSION_ID ? 'claude' : undefined);
 
 export const COMMANDS = {
   init: (cwd) => {
@@ -28,6 +31,7 @@ export const COMMANDS = {
 
   write(cwd, a) {
     if (!store.exists(cwd)) throw new Error('not initialised; run `baton init`');
+    a = { ...a, agent: a.agent ?? hostAgent() };
     const parent = a.parent ? need(cwd, a.parent) : null;
     const id = a.id || store.newId();
     store.writeBrief(cwd, id, stripExtract(build(cwd, { id, name: a.name, agent: a.agent, model: a.model, parent, sk: skeleton([]) })));
@@ -66,6 +70,7 @@ export const COMMANDS = {
     if (!a.task) throw new Error('--task required');
     const pb = parseBrief(store.readBrief(cwd, p.id) || '');
     const id = store.newId();
+    a = { ...a, agent: a.agent ?? hostAgent() };
     const e = store.register(cwd, { id, agent: a.agent, parent: p.id, sessionId: a['agent-id'] });
     const t = parseBrief(build(cwd, { id, agent: a.agent, parent: p, sk: skeleton([]) }));
     t.sections = {

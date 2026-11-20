@@ -76,25 +76,17 @@ Restart Claude Code / Claude Desktop. You get `/baton:handover`, `/baton:takeove
 
 ### 3. Codex (CLI and Codex app; both use `~/.codex`)
 
-Skills (current Codex):
+baton is a Codex plugin. It bundles the CLI and gives you the `baton:handover`, `baton:takeover` and `baton:switch` skills:
 
 ```sh
-for s in handover takeover switch; do
-  mkdir -p ~/.codex/skills/baton-$s
-  sed "s/^name: $s/name: baton-$s/" ~/code/baton/plugin/skills/$s/SKILL.md > ~/.codex/skills/baton-$s/SKILL.md
-done
+codex plugin marketplace add sriinnu/baton
+codex plugin add baton@sriinnu-baton
+codex plugin list                     # baton@sriinnu-baton should show "installed, enabled"
 ```
 
-```powershell
-foreach ($s in 'handover','takeover','switch') {
-  $d = "$HOME\.codex\skills\baton-$s"; New-Item -ItemType Directory -Force $d | Out-Null
-  (Get-Content "$HOME\code\baton\plugin\skills\$s\SKILL.md" -Raw) -replace "name: $s", "name: baton-$s" | Set-Content "$d\SKILL.md"
-}
-```
+Start a new Codex session to load it. Update with `codex plugin marketplace upgrade sriinnu-baton`. No `notify` line is needed (baton ≤ 0.1 used one; if you still have `notify = ["baton", "sync", "--hook"]`, remove it: it now does nothing).
 
-Older Codex (custom prompts): copy `codex/*.md` into `~/.codex/prompts/` (create the folder first).
-
-Restart Codex. No `notify` line is needed (baton ≤ 0.1 used one; if you still have `notify = ["baton", "sync", "--hook"]`, remove it: it now does nothing).
+Upgrading from baton ≤ 0.3.0? Delete the old copies so the skills aren't loaded twice: `~/.codex/skills/baton-*` and `~/.codex/prompts/handover.md`, `takeover.md` (Codex has deprecated custom prompts).
 
 ### 4. Any other agent
 
@@ -104,10 +96,10 @@ Paste [`rules/AGENTS.snippet.md`](rules/AGENTS.snippet.md) into `AGENTS.md` / `C
 
 ```sh
 npm i -g @sriinnu/baton@latest     # the CLI
-cd ~/code/baton && git pull        # the plugin and skills; then rerun the Codex skills loop above
+cd ~/code/baton && git pull        # the Claude plugin from a clone; Codex: codex plugin marketplace upgrade sriinnu-baton
 ```
 
-In Claude Code run `claude plugin marketplace update sriinnu-baton`, then `/reload-plugins` (or restart). Uninstall: `claude plugin uninstall baton@sriinnu-baton`, `npm uninstall -g @sriinnu/baton` and delete `~/.codex/skills/baton-*`.
+In Claude Code run `claude plugin marketplace update sriinnu-baton`, then `/reload-plugins` (or restart). Uninstall: `claude plugin uninstall baton@sriinnu-baton`, `npm uninstall -g @sriinnu/baton` and `codex plugin remove baton@sriinnu-baton`.
 
 Note: Windows works but has had less testing.
 
@@ -245,11 +237,11 @@ All worktrees of a repo share the main checkout's `.baton/` (a fresh worktree ha
 
 ## Status
 
-v0.3.0 on npm (`@sriinnu/baton`). Session readers: Claude Code (`~/.claude/projects`), Codex (`~/.codex/sessions`), generic `--path`. Another agent is a ~30-line reader in `plugin/src/readers/`. Covered by 68 tests against fixture transcripts and a fake model, plus `baton doctor` against real sessions. Live-tested: Claude Code ↔ Codex handover and takeover, and `--distill` with `claude -p --model haiku` on a real 2 MB Codex session; `codex exec` as the runner has not been exercised yet.
+v0.3.1 on npm (`@sriinnu/baton`). Session readers: Claude Code (`~/.claude/projects`), Codex (`~/.codex/sessions`), generic `--path`. Another agent is a ~30-line reader in `plugin/src/readers/`. Covered by 75 tests against fixture transcripts and a fake model, plus `baton doctor` against real sessions. Live-tested: Claude Code ↔ Codex handover and takeover, and `--distill` with `claude -p --model haiku` on a real 2 MB Codex session; `codex exec` as the runner has not been exercised yet.
 
 ## Playground
 
-Open `playground/index.html` in a browser (no install, nothing uploaded). Docs: `docs/wiki/`.
+Try it in your browser: **https://sriinnu.github.io/baton/** (no install, nothing uploaded). It runs the same parsers and redaction as the CLI; `npm run playground` rebuilds the local copy in `playground/index.html`. Docs: `docs/wiki/`.
 
 ## Develop
 

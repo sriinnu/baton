@@ -86,3 +86,16 @@ test('takeover prints a switch block: previous vs new model/provider, tokens', (
   const u = baton(dir, ['takeover', 'old', '--name', 'again']);
   assert.match(u.out, /to:   unknown \(the taking-over agent should pass --model/);
 });
+
+test('handover records the host agent from its env, so a shared skill needs no --agent; an explicit --agent wins', () => {
+  const { dir } = repo();
+  baton(dir, ['init']);
+  baton(dir, ['handover', '--id', 'cx', '--name', 'cx'], { CODEX_THREAD_ID: '01a1e000-cccc-7000-8000-000000000009' });
+  baton(dir, ['handover', '--id', 'cl', '--name', 'cl'], { CLAUDE_CODE_SESSION_ID: 'c1c1c1c1-0000-4000-8000-000000000009' });
+  baton(dir, ['handover', '--id', 'ex', '--name', 'ex', '--agent', 'kimi'], { CODEX_THREAD_ID: '01a1e000-cccc-7000-8000-00000000000a' });
+  const b = JSON.parse(fs.readFileSync(`${dir}/.baton/index.json`, 'utf8')).briefs;
+  assert.equal(b.cx.agent, 'codex');
+  assert.equal(b.cl.agent, 'claude');
+  assert.equal(b.ex.agent, 'kimi');
+  assert.match(fs.readFileSync(`${dir}/.baton/briefs/cx.md`, 'utf8'), /^agent: codex$/m);
+});

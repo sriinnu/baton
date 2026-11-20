@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="baton logo">
+  <title>baton</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1d2133"/><stop offset="1" stop-color="#0e1018"/>
+    </linearGradient>
+    <!-- the baton: a cylinder, lit from the left -->
+    <linearGradient id="stick" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffd27a"/><stop offset=".45" stop-color="#ffb627"/><stop offset="1" stop-color="#e57a0c"/>
+    </linearGradient>
+    <!-- the handover: one agent's colour passing into the next -->
+    <linearGradient id="pass" gradientUnits="userSpaceOnUse" x1="0" y1="58" x2="0" y2="114">
+      <stop offset="0" stop-color="#2ec4a6"/><stop offset="1" stop-color="#8b7bff"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="28" fill="url(#bg)"/>
+  <!-- bowl of the b: the brief carried around and handed back to the baton -->
+  <path d="M52 64 H71 A20 20 0 0 1 71 104 H66" fill="none" stroke="url(#pass)" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M54 104 L67 93.5 L67 114.5 Z" fill="#8b7bff" stroke="#8b7bff" stroke-width="3" stroke-linejoin="round"/>
+  <!-- stem of the b: the baton -->
+  <rect x="32" y="16" width="18" height="96" rx="9" fill="url(#stick)"/>
+  <rect x="36" y="22" width="4" height="22" rx="2" fill="#fff" opacity=".5"/>
+</svg>
