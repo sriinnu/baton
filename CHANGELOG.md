@@ -15,6 +15,7 @@ baton is now a Codex plugin, and the Claude directory build is in.
 - `plugin/README.md`, and a 1024 px PNG icon rendered from the logo.
 
 - The playground is live at https://sriinnu.github.io/baton/. A Pages workflow rebuilds it from the sources on every change, so it can't lag the CLI.
+- The playground opens on a finished brief: each sample is shown filled in the way an outgoing agent leaves it, labelled as an example, with the raw `<!-- fill -->` skeleton one checkbox away.
 
 ### Fixed
 - The shared skills told every agent to run `--agent claude`, so a Codex handover was recorded as Claude's. The CLI now takes the agent from its host (`CODEX_THREAD_ID` means codex, `CLAUDE_CODE_SESSION_ID` means claude) when `--agent` is not given, and the skills no longer hard-code it. `switch` also says how to switch in Codex.

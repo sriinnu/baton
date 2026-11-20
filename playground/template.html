@@ -22,6 +22,7 @@ textarea { height:260px; resize:vertical; }
 button { background:var(--card); color:var(--fg); border:1px solid var(--line); border-radius:6px; padding:6px 12px; font:inherit; font-size:.9rem; cursor:pointer; }
 button:hover, button[aria-selected="true"] { border-color:var(--acc); color:var(--acc); }
 pre { background:var(--code); border:1px solid var(--line); border-radius:6px; padding:10px; margin:8px 0 0; overflow:auto; max-height:420px; font:13px/1.45 ui-monospace, Menlo, monospace; white-space:pre-wrap; word-break:break-word; }
+.check { display:flex; align-items:center; gap:6px; text-transform:none; letter-spacing:0; font-size:.85rem; margin:10px 0 0; cursor:pointer; } .check[hidden] { display:none; } .check input { width:auto; flex:none; margin:0; padding:0; }
 .stat { margin-top:10px; font-size:.85rem; color:var(--mut); } .stat b { color:var(--fg); }
 footer { margin-top:24px; color:var(--mut); font-size:.85rem; }
 code { background:var(--code); padding:1px 5px; border-radius:4px; }
@@ -52,6 +53,7 @@ code { background:var(--code); padding:1px 5px; border-radius:4px; }
         <button id="copy" style="margin-left:auto">Copy</button>
       </div>
       <pre id="out"></pre>
+      <label class="check" id="filled-row"><input type="checkbox" id="filled" checked> Show the sample brief filled in, the way the outgoing agent leaves it</label>
       <div class="stat" id="hint"></div>
     </section>
   </div>
@@ -61,6 +63,30 @@ code { background:var(--code); padding:1px 5px; border-radius:4px; }
 /*CORE*/
 const SAMPLES = /*SAMPLES*/;
 const $ = (s) => document.querySelector(s);
+// What an outgoing agent writes into the <!-- fill --> holes for each sample session, so the
+// first screen shows a finished brief rather than a template. Shown only for an unedited sample.
+const EXAMPLES = {
+  claude: {
+    state: 'branch: fix/login\nhead: 3f2c1a9 (measured from git by the real CLI)\ndirty: src/auth.js, test/auth.test.js\nverify: npm test',
+    sections: {
+      Task: 'Fix the login bug in auth.js: valid users are rejected after a password change.',
+      Decisions: '- Compare the token expiry in UTC, not local time: the failing case only shows across a timezone boundary.\n- Keep the SSO path untouched; the bug is in the password path only.',
+      Done: '- Found the cause: `isExpired()` in src/auth.js compares a UTC timestamp with local time.\n- Fixed it, and added a regression test for a user in UTC+5:30.',
+      Next: '- `npm test` still fails 2 tests (`Error: 2 tests failed`): both in test/auth.test.js and both use a hard-coded local date. Make them use UTC.\n- Then run the SSO suite once before committing.',
+      'Dead ends': '- Clearing the session cache: no effect, the token itself is judged expired.\n- The API key the user pasted is not needed for this fix (it is redacted in Extract).',
+    },
+  },
+  codex: {
+    state: 'branch: refactor/store\nhead: 8b41d07 (measured from git by the real CLI)\ndirty: src/store.js\nverify: npm test',
+    sections: {
+      Task: 'Refactor the store: split reads from writes so callers stop mutating shared state.',
+      Decisions: '- Writes go through one `commit()` function; reads return frozen copies.',
+      Done: '- src/store.js: reads and writes separated (patch applied, not yet tested).',
+      Next: '- `git status --short` failed with `error: boom` in this sandbox: rerun it in the real repo before trusting the dirty list.\n- Run `npm test`, then update the two callers that still write directly.',
+      'Dead ends': '- none yet',
+    },
+  },
+};
 let tab = 'brief', views = {};
 const HINTS = {
   brief: 'What the next agent reads. <!-- fill --> marks what the outgoing agent (or the sync model) writes.',
@@ -74,26 +100,30 @@ function render() {
   const raw = $('#in').value, agent = detect(raw);
   const r = !raw.trim() ? { turns: [] } : agent === 'codex' ? parseCodex(raw) : agent === 'claude' ? parseClaude(raw) : { turns: [{ role: 'user', text: raw }] };
   const sk = skeleton(r.turns), mission = $('#mission').value.trim(), task = $('#task').value.trim() || '(describe the subtask)';
-  const state = 'branch: main\nhead: (measured from git by the real CLI)\ndirty: none';
+  const sample = Object.keys(SAMPLES).find((k) => SAMPLES[k] === raw), ex = sample && $('#filled').checked ? EXAMPLES[sample] : null;
+  $('#filled-row').hidden = !sample;
+  const state = ex ? ex.state : 'branch: main\nhead: (measured from git by the real CLI)\ndirty: none';
   const now = new Date().toISOString().slice(0, 16) + 'Z';
   const brief = scaffold({ meta: { id: 'root', name: 'demo', agent, parent: null, mission: 'root', generated: now }, skeleton: sk, state, mission: mission || undefined });
   const parsed = parseBrief(brief); delete parsed.sections.Extract;
+  if (ex) Object.assign(parsed.sections, ex.sections);
   const root = serializeBrief(parsed);
   const child = serializeBrief({ meta: { id: 'child1', agent: 'any', parent: 'root', mission: 'root', generated: now }, sections: {
     Mission: mission || '<!-- fill -->', Lineage: '- root (demo) — ' + (sk.firstGoal.split('\n')[0].slice(0, 100) || 'no goal yet'), Task: task,
     'Report back': 'Before this session ends, update this brief: fill Done, Decisions (with why), Dead ends. The parent folds it back with `baton fold child1`.', State: state } });
-  const ex = renderExtract(sk);
-  views = { brief: root, extract: ex, child };
+  const extract = renderExtract(sk);
+  views = { brief: root, extract, child };
   $('#out').textContent = raw.trim() ? views[tab] : 'Load a sample or paste a session.';
-  const n = (ex.match(/\[REDACTED\]/g) || []).length, t = (s) => Math.ceil(s.length / 4);
+  const n = (extract.match(/\[REDACTED\]/g) || []).length, t = (s) => Math.ceil(s.length / 4);
   $('#stat').innerHTML = raw.trim() ? `detected <b>${agent}</b> · ${r.turns.length} turns · ${n} secret${n === 1 ? '' : 's'} redacted · input ≈ <b>${t(raw)}</b> tokens → child brief ≈ <b>${t(child)}</b> tokens (rough: chars ÷ 4)` : '';
-  $('#hint').textContent = HINTS[tab];
+  $('#hint').textContent = tab === 'brief' && ex ? 'Example: the prose under Task, Decisions, Done, Next and Dead ends is what the outgoing agent writes; untick the box above to see the raw skeleton baton starts from. Extract is what it had to work from.' : HINTS[tab];
 }
 document.querySelectorAll('[role=tab]').forEach((b) => b.onclick = () => { tab = b.dataset.t; document.querySelectorAll('[role=tab]').forEach((x) => x.setAttribute('aria-selected', x === b)); render(); });
 $('#s-claude').onclick = () => { $('#in').value = SAMPLES.claude; render(); };
 $('#s-codex').onclick = () => { $('#in').value = SAMPLES.codex; render(); };
 $('#clear').onclick = () => { $('#in').value = ''; render(); };
 $('#copy').onclick = async () => { try { await navigator.clipboard.writeText(views[tab]); $('#copy').textContent = 'Copied'; setTimeout(() => $('#copy').textContent = 'Copy', 1200); } catch {} };
+$('#filled').onchange = render;
 ['#in', '#mission', '#task'].forEach((s) => $(s).addEventListener('input', render));
 $('#in').value = SAMPLES.claude; render();
 </script>
