@@ -1,6 +1,6 @@
 {
   "name": "@sriinnu/baton",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Pass work between AI coding agents: distilled, inheritable briefs.",
   "author": "Srinivas Pendela (https://github.com/sriinnu)",
   "homepage": "https://github.com/sriinnu/baton#readme",

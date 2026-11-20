@@ -1,6 +1,6 @@
 {
   "name": "baton",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Pass work between AI coding agents: distilled, inheritable briefs. Bundles the baton CLI; needs Node 20+.",
   "author": {
     "name": "Srinivas Pendela",

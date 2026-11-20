@@ -243,7 +243,7 @@ All worktrees of a repo share the main checkout's `.baton/` (a fresh worktree ha
 
 ## Status
 
-v0.2.0 on npm (`@sriinnu/baton`). Session readers: Claude Code (`~/.claude/projects`), Codex (`~/.codex/sessions`), generic `--path`. Another agent is a ~30-line reader in `plugin/src/readers/`. Covered by 60 tests against fixture transcripts and a fake model, plus `baton doctor` against real sessions. Live-tested: Claude Code ↔ Codex handover and takeover, and `--distill` with `claude -p --model haiku` on a real 2 MB Codex session; `codex exec` as the runner has not been exercised yet.
+v0.3.0 on npm (`@sriinnu/baton`). Session readers: Claude Code (`~/.claude/projects`), Codex (`~/.codex/sessions`), generic `--path`. Another agent is a ~30-line reader in `plugin/src/readers/`. Covered by 68 tests against fixture transcripts and a fake model, plus `baton doctor` against real sessions. Live-tested: Claude Code ↔ Codex handover and takeover, and `--distill` with `claude -p --model haiku` on a real 2 MB Codex session; `codex exec` as the runner has not been exercised yet.
 
 ## Playground
 
