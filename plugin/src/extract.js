@@ -4,7 +4,7 @@ const SECRETS = [/sk-[A-Za-z0-9_-]{16,}/g, /ghp_[A-Za-z0-9]{20,}/g, /AKIA[0-9A-Z
 export const redact = (s) => SECRETS.reduce((t, re) => t.replace(re, '[REDACTED]'), String(s ?? ''));
 const uniq = (a) => [...new Set(a)];
 const cut = (s, n) => redact(s).slice(0, n);
-const SHELL = new Set(['Bash', 'exec_command', 'shell']);
+const SHELL = new Set(['Bash', 'REPL', 'exec_command', 'shell']);
 
 export function skeleton(turns) {
   const users = turns.filter((t) => t.role === 'user');

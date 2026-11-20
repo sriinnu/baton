@@ -4,7 +4,7 @@ import { parseArgs } from 'node:util';
 import { COMMANDS } from '../src/commands.js';
 
 const [cmd, ...rest] = process.argv.slice(2);
-const OPTS = { name: { type: 'string' }, parent: { type: 'string' }, agent: { type: 'string' }, model: { type: 'string' }, provider: { type: 'string' }, path: { type: 'string' }, id: { type: 'string' }, task: { type: 'string' }, 'agent-id': { type: 'string' }, hook: { type: 'boolean' }, bg: { type: 'boolean' }, run: { type: 'boolean' } };
+const OPTS = { name: { type: 'string' }, parent: { type: 'string' }, agent: { type: 'string' }, model: { type: 'string' }, provider: { type: 'string' }, path: { type: 'string' }, id: { type: 'string' }, task: { type: 'string' }, 'agent-id': { type: 'string' }, hook: { type: 'boolean' }, bg: { type: 'boolean' }, run: { type: 'boolean' }, limit: { type: 'string' } };
 const fn = COMMANDS[cmd];
 if (!fn) { console.error(`usage: baton <${Object.keys(COMMANDS).join('|')}> [args]`); process.exit(1); }
 const { values, positionals } = parseArgs({ args: rest, options: OPTS, allowPositionals: true, strict: false });

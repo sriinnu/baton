@@ -7,12 +7,13 @@ const text = (c) => (typeof c === 'string' ? c : (c || []).filter((b) => b.type 
 export function parse(content, from = 0, isSub = false) {
   const lines = content.split('\n').filter(Boolean);
   const turns = [];
-  let cwd, model;
+  let cwd, model, started;
   const byMsg = new Map(); // usage repeats across a message's records: keep one per message id
   lines.forEach((l, n) => {
     let r;
     try { r = JSON.parse(l); } catch { return; }
     cwd ??= r.cwd;
+    started ??= r.timestamp;
     if (r.isSidechain && !isSub) return;
     if (r.type === 'assistant' && r.message?.model && r.message.model !== '<synthetic>') model = r.message.model;
     if (r.type === 'assistant' && r.message?.usage) byMsg.set(r.message.id || `n${n}`, r.message.usage);
@@ -30,7 +31,7 @@ export function parse(content, from = 0, isSub = false) {
         else if (b.type === 'tool_use') {
           const i = b.input || {};
           const f = i.file_path || i.path || i.notebook_path;
-          turns.push({ role: 'tool', tool: b.name, text: i.command || `${b.name} ${f || ''}`.trim(), files: f ? [f] : [] });
+          turns.push({ role: 'tool', tool: b.name, text: i.command || (b.name === 'REPL' && (i.description || String(i.code || '').split('\n')[0])) || `${b.name} ${f || ''}`.trim(), files: f ? [f] : [] });
         }
       }
     }
@@ -38,7 +39,7 @@ export function parse(content, from = 0, isSub = false) {
   const us = [...byMsg.values()];
   const last = us.at(-1);
   const usage = last && { context: (last.input_tokens || 0) + (last.cache_read_input_tokens || 0) + (last.cache_creation_input_tokens || 0), read: us.reduce((a, u) => a + (u.cache_read_input_tokens || 0), 0), write: us.reduce((a, u) => a + (u.cache_creation_input_tokens || 0), 0) };
-  return { turns, lines: lines.length, cwd, ...(model && { model }), ...(usage && { usage }) };
+  return { turns, lines: lines.length, cwd, ...(started && { started }), ...(model && { model }), ...(usage && { usage }) };
 }
 
 // --- node-only ---

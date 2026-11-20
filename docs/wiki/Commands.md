@@ -7,6 +7,7 @@
 | `takeover <ref> [--name n]` | show, run the arrival check, start a continuation if clean |
 | `gist <ref>` | the brief plus drift since written (alias of `show`) |
 | `check <ref> [--no-run]` | arrival check alone |
+| `doctor [--limit n]` | run the Claude and Codex readers on your newest real sessions; exit 1 if one comes back empty (transcript format changed) |
 | `from <session-id> \| --path f [--agent a]` | brief from a past session (idempotent) |
 | `child <ref> --task "…" [--agent-id id]` | brief for a subagent |
 | `fold <child>` | fold a finished child into its parent |

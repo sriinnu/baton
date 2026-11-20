@@ -9,6 +9,7 @@ import { skeleton } from './extract.js';
 import { build, lineageText } from './make.js';
 import { sync, log } from './sync.js';
 import { check } from './check.js';
+import { doctor } from './doctor.js';
 
 const need = (cwd, ref) => {
   if (!store.exists(cwd)) throw new Error('not initialised; run `baton init`');
@@ -104,6 +105,9 @@ export const COMMANDS = {
     return { out: r.updated ? 'updated' : `skipped: ${r.reason}` };
   },
 
+  doctor(cwd, a) {
+    return doctor({ home: home(), limit: Number(a.limit) || 5 });
+  },
   check(cwd, a, [ref]) {
     const r = check(cwd, ref, { run: !!a.run });
     return { out: r.ok ? ['ok', r.note].filter(Boolean).join('\n') : r.lines.join('\n'), code: r.drift ? 2 : r.ok ? 0 : 1 };

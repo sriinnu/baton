@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { locate, read } from '../plugin/src/readers/index.js';
-import { HOME, CID, XID } from './helpers.js';
+import { HOME, CID, XID, XID2 } from './helpers.js';
+import { skeleton } from '../plugin/src/extract.js';
 
 test('claude: roles, skips sidechain + system-reminder, files, cwd', () => {
   const l = locate(CID, { home: HOME });
@@ -56,4 +57,34 @@ test('readers report the session model', async () => {
   assert.equal(c(JSON.stringify({ type: 'assistant', message: { id: 'm', model: 'claude-opus-5-5', content: [] } })).model, 'claude-opus-5-5');
   assert.equal(x(JSON.stringify({ type: 'turn_context', payload: { model: 'gpt-5-codex' } })).model, 'gpt-5-codex');
   assert.equal(c('').model, undefined);
+});
+
+test('codex 0.16x (item_completed): real-shape session, injections and other threads ignored', () => {
+  const l = locate(XID2, { home: HOME });
+  assert.equal(l.agent, 'codex');
+  const r = read('codex', l.path);
+  const roles = (x) => r.turns.filter((t) => t.role === x).length;
+  assert.deepEqual([roles('user'), roles('assistant'), roles('tool')], [1, 2, 6]);
+  assert.equal(r.turns[0].text, 'Fix the flaky retry test in net.js');
+  assert.ok(!r.turns.some((t) => /INJECT|skip me|tools\.exec_command/.test(t.text)));
+  assert.deepEqual(r.turns.flatMap((t) => t.files || []), ['/tmp/proj/src/net.js', '/tmp/proj/test/net.test.js']);
+  assert.equal(r.cwd, '/tmp/proj');
+  assert.equal(r.parent, 'p2');
+  assert.equal(r.model, 'gpt-6.1-sol');
+  assert.equal(r.started, '2026-11-15T10:00:00.000Z');
+  assert.deepEqual(r.usage, { context: 52000, read: 71000, write: 1200 });
+  const sk = skeleton(r.turns);
+  assert.deepEqual(sk.commands, ['rg -n retry src', 'npm test -- net']);
+  assert.equal(sk.errors.length, 1);
+  assert.match(sk.errors[0], /^command failed \(exit 1\)/);
+  const failed = r.turns.find((t) => /exit 1/.test(t.text)).text;
+  assert.match(failed, /AssertionError: expected 3 retries/); // keeps the tail, where the error is
+});
+
+test('codex 0.16x: offset resumes after already-read lines', () => {
+  const p = locate(XID2, { home: HOME }).path;
+  const all = read('codex', p);
+  const later = read('codex', p, all.lines - 4);
+  assert.deepEqual(later.turns.map((t) => t.text), ['Fixed: off-by-one in retry().']);
+  assert.deepEqual(later.usage, all.usage); // usage always covers the whole session
 });

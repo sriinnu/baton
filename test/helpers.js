@@ -11,7 +11,8 @@ process.env.GIT_CONFIG_NOSYSTEM = '1';
 export const HOME = path.join(here, 'fixtures', 'home');
 export const BIN = path.join(here, '..', 'plugin', 'cli', 'baton.js');
 export const CID = 'c1c1c1c1-0000-4000-8000-000000000001';
-export const XID = '019e0000-aaaa-7000-8000-000000000002';
+export const XID = '019e0000-aaaa-7000-8000-000000000002'; // legacy codex format (0.128)
+export const XID2 = '01a1e000-bbbb-7000-8000-000000000003'; // current codex format (0.16x item_completed)
 
 export function repo() {
   const d = fs.mkdtempSync(path.join(os.tmpdir(), 'baton-'));
