@@ -65,6 +65,8 @@ claude plugin install baton@sriinnu-baton
 claude plugin list                              # baton@sriinnu-baton should show "enabled"
 ```
 
+From Anthropic's plugin directory (once listed), the same skills come as **agent-baton** without the bundled CLI, so install the CLI from step 1 first.
+
 Or upload it in claude.ai (Settings, Customize, Plugins): run `npm run pack:plugin`, then upload `dist/baton-plugin.zip`.
 
 Restart Claude Code / Claude Desktop. You get `/baton:handover`, `/baton:takeover` and `/baton:switch`. The plugin installs no hooks: baton runs only when you, or the agent on your behalf, call it.

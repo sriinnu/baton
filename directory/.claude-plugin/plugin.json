@@ -1,0 +1,22 @@
+{
+  "name": "agent-baton",
+  "version": "0.3.0",
+  "description": "Pass work between AI coding agents through short, git-checked handover briefs. Skills for the baton CLI (npm @sriinnu/baton, Node 20+).",
+  "author": {
+    "name": "Srinivas Pendela",
+    "url": "https://github.com/sriinnu"
+  },
+  "homepage": "https://github.com/sriinnu/baton#readme",
+  "repository": "https://github.com/sriinnu/baton",
+  "license": "MIT",
+  "keywords": [
+    "handover",
+    "takeover",
+    "context",
+    "briefs",
+    "multi-agent",
+    "codex",
+    "session",
+    "model-switch"
+  ]
+}

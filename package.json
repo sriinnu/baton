@@ -38,7 +38,8 @@
     "playground": "node playground/build.js",
     "pack:plugin": "node scripts/pack-plugin.js",
     "release:check": "node scripts/release-gate.mjs",
-    "prepublishOnly": "node scripts/release-gate.mjs publish"
+    "prepublishOnly": "node scripts/release-gate.mjs publish",
+    "build:directory": "node scripts/build-directory.mjs"
   },
   "license": "MIT",
   "publishConfig": {
