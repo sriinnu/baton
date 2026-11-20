@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { mainRoot } from './git.js';
+import { mainRoot, excludeLocally } from './git.js';
 
 const dir = (cwd) => path.join(mainRoot(cwd), '.baton');
 const idxPath = (cwd) => path.join(dir(cwd), 'index.json');
@@ -52,12 +52,8 @@ export function init(cwd) {
   if (!exists(cwd)) save(cwd, { briefs: {} });
   const cfg = path.join(dir(cwd), 'config.json');
   if (!fs.existsSync(cfg)) fs.writeFileSync(cfg, JSON.stringify({ runner: 'claude', model: 'haiku' }, null, 2) + '\n');
-  const root = mainRoot(cwd);
-  const gi = path.join(root, '.gitignore');
-  if (fs.existsSync(path.join(root, '.git'))) {
-    const cur = fs.existsSync(gi) ? fs.readFileSync(gi, 'utf8') : '';
-    if (!/^\.baton\/?$/m.test(cur)) fs.writeFileSync(gi, cur + (cur && !cur.endsWith('\n') ? '\n' : '') + '.baton/\n');
-  }
+  // Ignore .baton/ locally; never edit the user's tracked .gitignore.
+  return excludeLocally(mainRoot(cwd), '.baton');
 }
 
 export function resolve(cwd, ref) {

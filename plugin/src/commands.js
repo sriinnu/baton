@@ -21,7 +21,10 @@ const home = () => os.homedir();
 const agentSession = () => process.env.CLAUDE_CODE_SESSION_ID || process.env.CLAUDE_SESSION_ID || process.env.CODEX_THREAD_ID || undefined;
 
 export const COMMANDS = {
-  init: (cwd) => { store.init(cwd); return { out: 'initialised .baton/' }; },
+  init: (cwd) => {
+    const how = { excluded: ' (ignored via .git/info/exclude)', 'already-ignored': ' (already ignored by git)', 'no-repo': ' (not a git repo)' }[store.init(cwd)];
+    return { out: `initialised .baton/${how}` };
+  },
 
   write(cwd, a) {
     if (!store.exists(cwd)) throw new Error('not initialised; run `baton init`');

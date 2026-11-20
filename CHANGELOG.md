@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ## [Unreleased]
 
+### Changed
+- `baton init` ignores `.baton/` through `.git/info/exclude` (the common dir, so every worktree sees it) instead of appending to your tracked `.gitignore`. If any rule already ignores `.baton/`, it adds nothing. Existing `.gitignore` entries are left as they are.
+
+### Added
+- `SECURITY.md`: report vulnerabilities privately through GitHub's private vulnerability reporting.
+
 ## [0.2.0] - 2026-11-20
 
 First npm release: `npm i -g @sriinnu/baton`.

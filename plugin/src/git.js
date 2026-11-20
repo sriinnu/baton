@@ -1,4 +1,6 @@
 import { execFileSync } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
 
 const run = (cwd, args) => execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
 const out = (cwd, args, d = '') => { try { return run(cwd, args).trim(); } catch { return d; } };
@@ -9,7 +11,20 @@ export function mainRoot(cwd) {
   if (!roots.has(cwd)) roots.set(cwd, out(cwd, ['worktree', 'list', '--porcelain']).match(/^worktree (.+)$/m)?.[1] ?? cwd);
   return roots.get(cwd);
 }
-const isAncestor = (cwd, a, b) => { try { run(cwd, ['merge-base', '--is-ancestor', a, b]); return true; } catch { return false; } };
+// Keep `entry` out of git without touching tracked files: append it to the shared
+// .git/info/exclude (the common dir, so every worktree sees it), unless some rule
+// (.gitignore, exclude, core.excludesFile) already ignores it. Returns what it did.
+export function excludeLocally(cwd, entry) {
+  if (out(cwd, ['rev-parse', '--is-inside-work-tree']) !== 'true') return 'no-repo';
+  if (out(cwd, ['check-ignore', '-q', entry], null) !== null) return 'already-ignored';
+  const common = out(cwd, ['rev-parse', '--path-format=absolute', '--git-common-dir']);
+  const file = path.join(common, 'info', 'exclude');
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const cur = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
+  fs.writeFileSync(file, cur + (cur && !cur.endsWith('\n') ? '\n' : '') + `${entry}/\n`);
+  return 'excluded';
+}
+const isAncestor =(cwd, a, b) => { try { run(cwd, ['merge-base', '--is-ancestor', a, b]); return true; } catch { return false; } };
 
 export function measure(cwd) {
   if (out(cwd, ['rev-parse', '--is-inside-work-tree']) !== 'true') return { repo: false, branch: null, head: null, diffStat: '', dirty: [] };

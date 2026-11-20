@@ -54,7 +54,7 @@ Open a **new** terminal, then check: `baton --help` prints the command list. If 
 Then, once per repo:
 
 ```sh
-cd your-repo && baton init      # creates .baton/ (gitignored)
+cd your-repo && baton init      # creates .baton/ (ignored via .git/info/exclude)
 ```
 
 ### 2. Claude Code (CLI, and the Code tab in Claude Desktop)
@@ -239,7 +239,7 @@ All worktrees of a repo share the main checkout's `.baton/` (a fresh worktree ha
 
 - Transcripts are untrusted data: never executed. API keys, tokens and private keys are redacted before anything is written or sent to a model.
 - The model call runs with `BATON_SYNC=1`, so your own agent hooks can recognise and skip it.
-- `.baton/` is gitignored by default; commit it deliberately if you want to share briefs.
+- `.baton/` is ignored through `.git/info/exclude`, so `init` never edits your tracked `.gitignore`. To share briefs, commit them deliberately (`git add -f .baton/`).
 
 ## Status
 

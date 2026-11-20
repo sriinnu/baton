@@ -3,7 +3,7 @@
 ```sh
 npm i -g @sriinnu/baton                                    # Node >= 20, zero dependencies
 git clone https://github.com/sriinnu/baton.git ~/code/baton   # only for the Claude plugin / Codex skills
-cd your-repo && baton init                                 # creates .baton/ (gitignored)
+cd your-repo && baton init                                 # creates .baton/ (ignored via .git/info/exclude)
 ```
 
 Leaving: `baton handover --name auth-fix`, then the agent fills the prose.
