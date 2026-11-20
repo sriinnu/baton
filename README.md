@@ -18,9 +18,22 @@ Sonnet (200k context)  ──/baton:handover──▶  brief (~150 lines)  ─�
 
 baton keeps one small markdown **brief** per piece of work. Any agent can read it; no plugin is needed to *read* one.
 
+## How to use it
+
+| | **CLI (terminal)** | **Desktop app** (Claude Code tab / uploaded plugin) |
+|---|---|---|
+| Install | `npm link` the CLI, then `claude plugin marketplace add` + `claude plugin install` (see [Install](#install)) | Upload `dist/baton-plugin.zip` (Settings, Customize, Plugins). Nothing else to install: Node 20+ only |
+| Leave | `/baton:handover` or `/baton:switch` | same |
+| Switch model | `/clear`, then `/model <target>`, then `/baton:takeover <name>` | Start a **new task** with the target model selected, then `/baton:takeover <name>` |
+| Don't | | Use the model picker on the same task: it re-reads the whole history |
+
+Handing off to another agent (for example Codex) works the same way: write the brief with `baton handover`, then run `baton takeover <name>` in the other agent.
+
 ## Install
 
 Needs **Node >= 20** and **git**. No dependencies. Not on npm yet (`@sriinnu/baton` is unpublished), so clone and link.
+
+**Only using the Claude plugin?** It bundles the CLI, so you need just Node >= 20 and can skip step 1. Step 1 is for running `baton` in a terminal or with Codex.
 
 ### 1. CLI (required)
 
@@ -53,6 +66,8 @@ claude plugin marketplace add ~/code/baton      # Windows: "$HOME\code\baton"
 claude plugin install baton@sriinnu-baton
 claude plugin list                              # baton@sriinnu-baton should show "enabled"
 ```
+
+Or upload it in claude.ai (Settings, Customize, Plugins): run `npm run pack:plugin`, then upload `dist/baton-plugin.zip`.
 
 Restart Claude Code / Claude Desktop. You get `/baton:handover`, `/baton:takeover`, `/baton:switch` and the sync hooks.
 
@@ -124,6 +139,18 @@ Both `gist` and `takeover` end with a measured token line, for example:
 tokens: session context ≈ 74.0k · cache reads (all turns) 29.6M · writes 722.8k | brief ≈ 3.0k → a fresh session starts ~25x smaller
 ```
 
+On takeover you also get a `--- switch ---` block: who handed over to whom, and what the switch saved.
+
+```
+--- switch ---
+from: Anthropic · claude-opus-5-5 (claude)
+to:   OpenAI · gpt-5-codex (codex)
+context: old session ≈ 180k → brief ≈ 1.3k; ~179k not re-sent cold (est.)
+cache: old session read 2.1M, wrote 300k; caches do not carry to a new model, so it starts empty
+```
+
+The previous model comes from the brief (or the old transcript); the new one is the `--model` the taking-over agent passes. Token counts come from the old transcript; the brief size is chars ÷ 4 and "not re-sent cold" is an estimate.
+
 **Changing model mid-task** (`/baton:switch`):
 
 ```
@@ -133,7 +160,7 @@ tokens: session context ≈ 74.0k · cache reads (all turns) 29.6M · writes 722
 /baton:takeover <name>
 ```
 
-The new model reads a few thousand tokens instead of the whole conversation. baton cannot intercept `/model` itself; switching in place still resends everything.
+The new model reads a few thousand tokens instead of the whole conversation. baton cannot intercept `/model` itself; switching in place still resends everything. In the **desktop app**, do not use the model picker on the same task (it warns that the full history gets re-read): start a **new task** with the target model selected, then run `/baton:takeover <name>`.
 
 **From a past session**, by id or name:
 

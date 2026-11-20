@@ -9,6 +9,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 - `baton takeover` prints a `--- switch ---` block: previous vs new provider and model, old session context vs brief size, tokens not re-sent cold (estimate), and cache read/write totals from the old transcript.
 - `--model` and `--provider` options. Briefs record the model that wrote them (`model:` in the frontmatter). The skills pass the agent's own model id.
 - Session readers report the model that produced a transcript (Claude Code and Codex).
+- README: "How to use it" table (CLI vs desktop app); plugin-only install needs just Node 20+, upload route, switch block, and desktop-app guidance (new task, not the model picker).
 - MIT `LICENSE`, `CHANGELOG.md`, author and repository metadata, `development` category.
 - `npm run pack:plugin` builds `dist/baton-plugin.zip` for the claude.ai "Upload a plugin" dialog.
 

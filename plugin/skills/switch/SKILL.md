@@ -9,7 +9,6 @@ Switching models in place resends the entire history to the new model with a col
 
 1. Do the `handover` steps now, while this model's cache is warm: `baton handover --name <name> --agent claude --model <your exact model id>`, fill every `<!-- fill -->`, add `verify: <cmd>` under `dirty:` in State. Include exact outputs the next model will need (failing test text, error messages) under Done or Dead ends, since it will not see this conversation.
 2. `baton check <name> --no-run`. It must exit 0 (exit 1 = still unfilled; fix and rerun).
-3. Tell the user, verbatim, the three steps (you cannot run them yourself):
-   - `/clear`
-   - `/model <target model>`
-   - `/baton:takeover <name>`
+3. Tell the user, verbatim, the steps (you cannot run them yourself):
+   - CLI: `/clear`, then `/model <target model>`, then `/baton:takeover <name>`
+   - Desktop app: start a **new task** with the target model selected, then `/baton:takeover <name>`. Do not use the model picker on this task: it re-reads the whole history, which defeats the switch.
