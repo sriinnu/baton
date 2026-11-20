@@ -25,7 +25,7 @@ export const COMMANDS = {
     if (!store.exists(cwd)) throw new Error('not initialised; run `baton init`');
     const parent = a.parent ? need(cwd, a.parent) : null;
     const id = a.id || store.newId();
-    store.writeBrief(cwd, id, stripExtract(build(cwd, { id, name: a.name, agent: a.agent, parent, sk: skeleton([]) })));
+    store.writeBrief(cwd, id, stripExtract(build(cwd, { id, name: a.name, agent: a.agent, model: a.model, parent, sk: skeleton([]) })));
     // pending: the next agent hook adopts this brief for the new session so sync keeps it current.
     store.register(cwd, { id, name: a.name, agent: a.agent, parent: parent?.id, sessionId: a.id, pending: a.id ? false : true, pendingFrom: process.env.CLAUDE_SESSION_ID || process.env.CODEX_THREAD_ID });
     return { out: store.briefPath(cwd, id) };
@@ -119,15 +119,31 @@ COMMANDS.takeover = (cwd, a, [ref]) => {
   const shown = COMMANDS.show(cwd, a, [ref]).out;
   const c = COMMANDS.check(cwd, a, [ref]);
   if (c.code) return { out: `${shown}\n--- check ---\n${c.out}`, code: c.code };
-  return { out: `${shown}\n--- check: ok ---\ncontinuation brief: ${COMMANDS.write(cwd, { name: a.name, agent: a.agent, parent: e.id }).out}` };
+  return { out: `${shown}\n--- check: ok ---\ncontinuation brief: ${COMMANDS.write(cwd, { name: a.name, agent: a.agent, model: a.model, parent: e.id }).out}\n${switchBlock(e, a, store.readBrief(cwd, e.id))}` };
 };
 
 const k = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
+const PROVIDERS = [[/^(claude|opus|sonnet|haiku|fable)/i, 'Anthropic'], [/^(gpt|o\d|codex|chatgpt)/i, 'OpenAI'], [/^gemini/i, 'Google']];
+const providerOf = (model, agent) => (model && PROVIDERS.find(([r]) => r.test(model))?.[1]) || { claude: 'Anthropic', codex: 'OpenAI' }[agent] || 'unknown';
+const who = (model, agent, provider) => `${provider || providerOf(model, agent)} · ${model || 'unknown model'}${agent && agent !== 'unknown' ? ` (${agent})` : ''}`;
+const session = (e) => { try { return (e.sourcePath && read(e.agent, e.sourcePath, 1e9)) || {}; } catch { return {}; } };
+
+// Who handed over to whom, and what the switch saved. Tokens are measured from the old transcript (brief = chars ÷ 4);
+// the new model is whatever the taking-over agent passes as --model, since nothing else can know it.
+function switchBlock(e, a, text) {
+  const { usage: u, model: seen } = session(e);
+  const meta = parseBrief(text).meta;
+  const brief = Math.ceil(text.length / 4);
+  const lines = ['--- switch ---', `from: ${who(meta.model || seen, e.agent)}`, `to:   ${a.model ? who(a.model, a.agent, a.provider) : 'unknown (the taking-over agent should pass --model <id>)'}`];
+  if (u) lines.push(`context: old session ≈ ${k(u.context)} → brief ≈ ${k(brief)}; ~${k(Math.max(0, u.context - brief))} not re-sent cold (est.)`, `cache: old session read ${k(u.read)}${u.write == null ? '' : `, wrote ${k(u.write)}`}; caches do not carry to a new model, so it starts empty`);
+  else lines.push(`context: brief ≈ ${k(brief)} (no session transcript linked, so the old context size is unknown)`);
+  return lines.join('\n');
+}
+
 // Cache reads/writes are measured from the transcript; a miss is not recorded, so none is claimed.
 function tokenLine(e, text) {
   const brief = Math.ceil(text.length / 4);
-  let u;
-  try { u = e.sourcePath && read(e.agent, e.sourcePath, 1e9).usage; } catch {}
+  const u = session(e).usage;
   if (!u) return `\ntokens: brief ≈ ${k(brief)} (chars ÷ 4)\n`;
   return `\ntokens: session context ≈ ${k(u.context)} · cache reads (all turns) ${k(u.read)}${u.write == null ? '' : ` · writes ${k(u.write)}`} | brief ≈ ${k(brief)} → a fresh session starts ~${Math.max(1, Math.round(u.context / brief))}x smaller\n`;
 }

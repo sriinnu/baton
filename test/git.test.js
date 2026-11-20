@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { measure, renderState, parseState, drift } from '../src/git.js';
+import { measure, renderState, parseState, drift } from '../plugin/src/git.js';
 import { repo } from './helpers.js';
 
 test('clean, dirty, and HEAD drift', () => {
@@ -37,7 +37,7 @@ test('verify line survives render/parse', () => {
 
 test('renames: dirty lists the new path only', async () => {
   const { repo } = await import('./helpers.js');
-  const { measure } = await import('../src/git.js');
+  const { measure } = await import('../plugin/src/git.js');
   const { dir, git } = repo();
   git('mv', 'a.txt', 'b c.txt');
   assert.deepEqual(measure(dir).dirty, ['b c.txt']);

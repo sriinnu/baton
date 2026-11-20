@@ -209,7 +209,7 @@ All worktrees of a repo share the main checkout's `.baton/` (a fresh worktree ha
 
 ## Status
 
-v0.1, private. Session readers: Claude Code (`~/.claude/projects`), Codex (`~/.codex/sessions`), generic `--path`. Another agent is a ~30-line reader in `src/readers/`. Covered by 47 tests against fixture transcripts and a fake model; the live Claude Code plugin, hooks and Codex `notify` wiring are still being exercised, and nothing has run against a real `claude -p` or `codex exec` yet.
+v0.1, private. Session readers: Claude Code (`~/.claude/projects`), Codex (`~/.codex/sessions`), generic `--path`. Another agent is a ~30-line reader in `plugin/src/readers/`. Covered by 47 tests against fixture transcripts and a fake model; the live Claude Code plugin, hooks and Codex `notify` wiring are still being exercised, and nothing has run against a real `claude -p` or `codex exec` yet.
 
 ## Playground
 

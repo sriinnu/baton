@@ -6,12 +6,13 @@ import fs from 'node:fs';
 export function parse(content, from = 0) {
   const lines = content.split('\n').filter(Boolean);
   const turns = [];
-  let cwd, parent, usage;
+  let cwd, parent, usage, model;
   lines.forEach((l, n) => {
     let r;
     try { r = JSON.parse(l); } catch { return; }
     const p = r.payload || {};
     if (r.type === 'session_meta') { cwd = p.cwd; parent = p.source?.subagent?.thread_spawn?.parent_thread_id; return; }
+    if (r.type === 'turn_context' && p.model) model = p.model;
     if (r.type === 'event_msg' && p.type === 'token_count' && p.info) usage = { context: p.info.last_token_usage?.input_tokens || 0, read: p.info.total_token_usage?.cached_input_tokens || 0, write: null }; // codex does not report cache writes
     if (n < from) return;
     if (r.type === 'event_msg' && p.type === 'user_message') turns.push({ role: 'user', text: p.message });
@@ -23,7 +24,7 @@ export function parse(content, from = 0) {
       turns.push({ role: 'tool', tool: p.name, text: a.cmd || a.command || p.name, files });
     } else if (r.type === 'response_item' && p.type === 'function_call_output') turns.push({ role: 'tool', tool: 'result', text: String(p.output ?? '') });
   });
-  return { turns, lines: lines.length, cwd, parent, ...(usage && { usage }) };
+  return { turns, lines: lines.length, cwd, parent, ...(model && { model }), ...(usage && { usage }) };
 }
 
 // --- node-only ---

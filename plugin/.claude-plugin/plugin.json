@@ -1,6 +1,22 @@
 {
   "name": "baton",
   "version": "0.1.0",
-  "description": "Pass work between agents: distilled, inheritable briefs. Requires the baton CLI on PATH (clone github.com/sriinnu/baton, then `npm link`).",
-  "author": { "name": "sriinnu" }
+  "description": "Pass work between AI coding agents: distilled, inheritable briefs. Bundles the baton CLI; needs Node 20+.",
+  "author": {
+    "name": "Srinivas Pendela",
+    "url": "https://github.com/sriinnu"
+  },
+  "homepage": "https://github.com/sriinnu/baton#readme",
+  "repository": "https://github.com/sriinnu/baton",
+  "license": "MIT",
+  "keywords": [
+    "handover",
+    "takeover",
+    "context",
+    "briefs",
+    "multi-agent",
+    "codex",
+    "session",
+    "model-switch"
+  ]
 }

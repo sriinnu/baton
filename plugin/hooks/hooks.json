@@ -1,7 +1,7 @@
 {
   "hooks": {
-    "Stop": [{ "hooks": [{ "type": "command", "command": "baton sync --hook 2>/dev/null || true" }] }],
-    "PreCompact": [{ "hooks": [{ "type": "command", "command": "baton sync --hook 2>/dev/null || true" }] }],
-    "SubagentStop": [{ "hooks": [{ "type": "command", "command": "baton sync --hook 2>/dev/null || true" }] }]
+    "Stop": [{ "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/cli/baton.js\" sync --hook 2>/dev/null || true" }] }],
+    "PreCompact": [{ "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/cli/baton.js\" sync --hook 2>/dev/null || true" }] }],
+    "SubagentStop": [{ "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/cli/baton.js\" sync --hook 2>/dev/null || true" }] }]
   }
 }

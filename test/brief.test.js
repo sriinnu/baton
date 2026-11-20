@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseBrief, serializeBrief, hasFillMarkers } from '../src/brief.js';
+import { parseBrief, serializeBrief, hasFillMarkers } from '../plugin/src/brief.js';
 
 const B = `---\nid: a1\nparent: null\ngenerated: 2026-11-18T10:00:00Z\n---\n\n## Mission\nShip it.\n\n## Done\n- x\n\n## Extract\nraw\n`;
 

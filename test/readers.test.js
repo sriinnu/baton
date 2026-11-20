@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { locate, read } from '../src/readers/index.js';
+import { locate, read } from '../plugin/src/readers/index.js';
 import { HOME, CID, XID } from './helpers.js';
 
 test('claude: roles, skips sidechain + system-reminder, files, cwd', () => {
@@ -41,11 +41,19 @@ test('generic: plain text becomes one user turn', async () => {
 });
 
 test('usage: claude dedupes per message id; codex reads token_count', async () => {
-  const { parse: c } = await import('../src/readers/claude.js');
-  const { parse: x } = await import('../src/readers/codex.js');
+  const { parse: c } = await import('../plugin/src/readers/claude.js');
+  const { parse: x } = await import('../plugin/src/readers/codex.js');
   const a = (id, i, r, w) => JSON.stringify({ type: 'assistant', message: { id, content: [], usage: { input_tokens: i, cache_read_input_tokens: r, cache_creation_input_tokens: w } } });
   assert.deepEqual(c([a('m1', 2, 100, 10), a('m1', 2, 100, 10), a('m2', 3, 150, 5)].join('\n')).usage, { context: 158, read: 250, write: 15 });
   const tc = JSON.stringify({ type: 'event_msg', payload: { type: 'token_count', info: { total_token_usage: { cached_input_tokens: 900 }, last_token_usage: { input_tokens: 300 } } } });
   assert.deepEqual(x(tc).usage, { context: 300, read: 900, write: null });
   assert.equal(c('').usage, undefined);
+});
+
+test('readers report the session model', async () => {
+  const { parse: c } = await import('../plugin/src/readers/claude.js');
+  const { parse: x } = await import('../plugin/src/readers/codex.js');
+  assert.equal(c(JSON.stringify({ type: 'assistant', message: { id: 'm', model: 'claude-opus-5-5', content: [] } })).model, 'claude-opus-5-5');
+  assert.equal(x(JSON.stringify({ type: 'turn_context', payload: { model: 'gpt-5-codex' } })).model, 'gpt-5-codex');
+  assert.equal(c('').model, undefined);
 });

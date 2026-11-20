@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import * as store from '../src/store.js';
+import * as store from '../plugin/src/store.js';
 import { repo } from './helpers.js';
 
 test('init is idempotent and gitignores', () => {

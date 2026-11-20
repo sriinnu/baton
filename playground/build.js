@@ -11,8 +11,8 @@ const strip = (s, rename) => {
 };
 
 export const buildCore = () => [
-  strip(rd('src/brief.js')), strip(rd('src/extract.js')),
-  strip(rd('src/readers/claude.js'), 'parseClaude'), strip(rd('src/readers/codex.js'), 'parseCodex'),
+  strip(rd('plugin/src/brief.js')), strip(rd('plugin/src/extract.js')),
+  strip(rd('plugin/src/readers/claude.js'), 'parseClaude'), strip(rd('plugin/src/readers/codex.js'), 'parseCodex'),
 ].join('\n');
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {

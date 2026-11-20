@@ -19,10 +19,10 @@ export function lineageText(cwd, parent) {
 const KNOWN = ['MISSION.md', 'mission.md', 'docs/MISSION.md', 'docs/mission.md', 'KNOWLEDGE.md', 'docs/knowledge.md'];
 export const readFirst = (cwd, at) => [...new Set([...KNOWN, ...(config(cwd).readFirst || [])])].filter((f) => fs.existsSync(path.join(at, f))).map((f) => `- ${f}`).join('\n');
 
-export function build(cwd, { id, name, agent, parent, sk, stateCwd = cwd, verify }) {
+export function build(cwd, { id, name, agent, model, parent, sk, stateCwd = cwd, verify }) {
   const mission = parent ? (parseBrief(readBrief(cwd, parent.id) || '').sections.Mission || '') : '';
   return scaffold({
-    meta: { id, name: name ?? null, agent: agent ?? 'unknown', parent: parent?.id ?? null, mission: parent?.mission ?? id, generated: new Date().toISOString() },
+    meta: { id, name: name ?? null, agent: agent ?? 'unknown', ...(model && { model }), parent: parent?.id ?? null, mission: parent?.mission ?? id, generated: new Date().toISOString() },
     skeleton: sk, state: renderState(measure(stateCwd), verify), lineage: lineageText(cwd, parent), mission, readFirst: readFirst(cwd, stateCwd),
   });
 }

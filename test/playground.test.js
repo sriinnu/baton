@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import { buildCore } from '../playground/build.js';
-import { parse as claude } from '../src/readers/claude.js';
-import { parse as codex } from '../src/readers/codex.js';
-import { redact } from '../src/extract.js';
+import { parse as claude } from '../plugin/src/readers/claude.js';
+import { parse as codex } from '../plugin/src/readers/codex.js';
+import { redact } from '../plugin/src/extract.js';
 import { HOME, CID, XID } from './helpers.js';
 
 test('playground bundle runs the same parsers and redaction as the CLI', () => {

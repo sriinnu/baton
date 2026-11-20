@@ -2,13 +2,30 @@
   "name": "@sriinnu/baton",
   "version": "0.1.0",
   "description": "Pass work between AI coding agents: distilled, inheritable briefs.",
+  "author": "Srinivas Pendela (https://github.com/sriinnu)",
+  "homepage": "https://github.com/sriinnu/baton#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sriinnu/baton.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sriinnu/baton/issues"
+  },
+  "keywords": [
+    "handover",
+    "takeover",
+    "context",
+    "briefs",
+    "multi-agent",
+    "codex",
+    "session",
+    "model-switch"
+  ],
   "type": "module",
   "bin": {
-    "baton": "bin/baton.js"
+    "baton": "plugin/cli/baton.js"
   },
   "files": [
-    "bin",
-    "src",
     "rules",
     "plugin",
     "codex"
@@ -18,7 +35,8 @@
   },
   "scripts": {
     "test": "node --test test/*.test.js",
-    "playground": "node playground/build.js"
+    "playground": "node playground/build.js",
+    "pack:plugin": "node scripts/pack-plugin.js"
   },
   "license": "MIT"
 }

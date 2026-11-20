@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 export const HOME = path.join(here, 'fixtures', 'home');
-export const BIN = path.join(here, '..', 'bin', 'baton.js');
+export const BIN = path.join(here, '..', 'plugin', 'cli', 'baton.js');
 export const CID = 'c1c1c1c1-0000-4000-8000-000000000001';
 export const XID = '019e0000-aaaa-7000-8000-000000000002';
 

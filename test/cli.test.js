@@ -73,3 +73,16 @@ test('takeover: clean → continuation brief with same mission; drift → exit 2
   assert.equal(d.code, 2);
   assert.ok(!baton(dir, ['ls']).out.includes('(again)'));
 });
+
+test('takeover prints a switch block: previous vs new model/provider, tokens', () => {
+  const { dir } = setup();
+  baton(dir, ['write', '--id', 'old', '--name', 'old', '--agent', 'claude', '--model', 'claude-opus-5-5']);
+  const f = `${dir}/.baton/briefs/old.md`;
+  fs.writeFileSync(f, fs.readFileSync(f, 'utf8').replace(/<!-- fill[^\n]*/g, 'x'));
+  const t = baton(dir, ['takeover', 'old', '--name', 'new', '--agent', 'codex', '--model', 'gpt-5-codex']);
+  assert.equal(t.code, 0, t.err);
+  assert.match(t.out, /--- switch ---\nfrom: Anthropic · claude-opus-5-5 \(claude\)\nto:   OpenAI · gpt-5-codex \(codex\)\ncontext: brief ≈/);
+  assert.match(fs.readFileSync(`${dir}/.baton/briefs/${t.out.match(/briefs\/(\w+)\.md/)[1]}.md`, 'utf8'), /model: gpt-5-codex/);
+  const u = baton(dir, ['takeover', 'old', '--name', 'again']);
+  assert.match(u.out, /to:   unknown \(the taking-over agent should pass --model/);
+});
