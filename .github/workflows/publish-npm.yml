@@ -54,13 +54,22 @@ jobs:
           pkg=$(node -p "require('./package.json').version")
           [[ "v$pkg" == "$TAG" ]] || { echo "::error::tag $TAG but package.json is $pkg"; exit 1; }
           echo "VERSION=$pkg" >> "$GITHUB_ENV"
-      # prepublishOnly runs scripts/release-gate.mjs publish: versions agree, changelog entry, tag at HEAD, tests pass.
-      - name: Stage
+      - name: Check whether this version is already on npm
+        id: exists
         run: |
           name=$(node -p "require('./package.json').name")
+          echo "NAME=$name" >> "$GITHUB_ENV"
           if [[ "$(npm view "$name@$VERSION" version 2>/dev/null)" == "$VERSION" ]]; then
-            echo "$name@$VERSION is already on npm."
-            exit 0
+            echo "::notice::$name@$VERSION is already on npm; nothing to stage."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
           fi
+      # prepublishOnly runs scripts/release-gate.mjs publish: versions agree, changelog entry, tag at HEAD, tests pass.
+      # The dry run packs and runs the gate without uploading, so a broken package fails here, not mid-stage.
+      - name: Stage (dry run)
+        if: steps.exists.outputs.skip != 'true'
+        run: npm stage publish --provenance --access public --dry-run
+      - name: Stage
+        if: steps.exists.outputs.skip != 'true'
+        run: |
           npm stage publish --provenance --access public
-          echo "::notice::$name@$VERSION is staged. Approve it on npmjs.com or with 'npm stage approve'."
+          echo "::notice::$NAME@$VERSION is staged. Approve it on npmjs.com or with 'npm stage approve'."
