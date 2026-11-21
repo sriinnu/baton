@@ -52,3 +52,15 @@ test('errors keep the first line (what failed) and the tail (the message), cutti
   assert.doesNotMatch(e, /\n/);
   assert.ok(e.length <= 300);
 });
+
+test('skeleton lists files under the session root relative to it; paths outside stay absolute', () => {
+  const sk = skeleton([
+    { role: 'tool', tool: 'Read', text: 'Read', files: ['/Users/someone/shop/src/auth.js'] },
+    { role: 'tool', tool: 'Edit', text: 'Edit', files: ['/Users/someone/shop-old/x.js'] },
+    { role: 'tool', tool: 'Read', text: 'Read', files: ['/etc/hosts'] },
+    { role: 'tool', tool: 'Read', text: 'Read', files: ['C:\\work\\shop\\src\\a.js'] },
+  ], { root: '/Users/someone/shop/' });
+  assert.deepEqual(sk.files, ['src/auth.js', '/Users/someone/shop-old/x.js', '/etc/hosts', 'C:\\work\\shop\\src\\a.js']);
+  assert.deepEqual(skeleton([{ role: 'tool', tool: 'Read', text: 'R', files: ['C:\\work\\shop\\src\\a.js'] }], { root: 'C:\\work\\shop' }).files, ['src\\a.js']);
+  assert.deepEqual(skeleton([{ role: 'tool', tool: 'Read', text: 'R', files: ['/a/b.js'] }]).files, ['/a/b.js']);
+});

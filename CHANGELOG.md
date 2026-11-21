@@ -8,6 +8,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 ### Added
 - `PRIVACY.md`: what baton reads, writes and sends (no telemetry, no server). The agent-baton manifest links it as `privacyPolicyUrl` for the Claude plugin directory, and a test keeps the link pointing at a real file.
 - `TERMS.md`, and the Codex manifest's directory metadata for OpenAI: a subtitle within 30 characters, website, support, privacy and terms URLs, and listing text that doesn't name other AI products (OpenAI rejects that). A test enforces all three.
+- A demo GIF in the README: a Claude Code session taken over by Codex. `scripts/demo/make.sh` rebuilds it from a synthetic session with this checkout's CLI, in a throwaway folder and fake HOME.
+
+### Fixed
+- `takeover` without `--agent` now names the host agent (from its env, as `handover` already did) in the switch block's `to:` line, not just in the continuation brief.
+- `takeover` printed two sizes for one brief (`tokens: brief ≈ 314`, then `brief ≈ 325` in the switch block): `check` stamps `## Check` into the brief after `show` had measured it. It now checks first, so the brief printed is the brief on disk.
+- Extract listed files by absolute path, home folder and username included. Files under the session's working folder are now relative to it; paths outside it stay absolute.
 
 ## [0.3.1] - 2026-11-20
 

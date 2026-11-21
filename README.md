@@ -10,6 +10,9 @@ Claude, Codex, Antigravity, Kimi, DeepSeek, or anything that can read a file. Yo
 Sonnet (200k context)  ──/baton:handover──▶  brief (~150 lines)  ──/baton:takeover──▶  Opus (fresh, ~3k tokens)
 ```
 
+<p align="center"><img src="https://raw.githubusercontent.com/sriinnu/baton/master/assets/demo.gif" width="820" alt="baton takeover: a Claude Code session that ran out of context is handed to Codex as a 325-token brief, with a secret redacted and the brief checked against git"></p>
+<p align="center"><sub>A demo session, rebuilt by <code>scripts/demo/make.sh</code>.</sub></p>
+
 ## Why
 
 - Switching model in place resends the entire conversation to a cold cache. That is the expensive part.

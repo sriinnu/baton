@@ -50,7 +50,7 @@ export const COMMANDS = {
     const id = found?.id || sessionId || store.newId();
     const parent = a.parent ? need(cwd, a.parent) : found?.parent ? store.resolve(cwd, found.parent) : r.parent ? store.resolve(cwd, r.parent) : null;
     const stateCwd = r.cwd && fs.existsSync(r.cwd) ? r.cwd : cwd;
-    store.writeBrief(cwd, id, build(cwd, { id, name: a.name ?? found?.name, agent: loc.agent, parent, sk: skeleton(r.turns), stateCwd }));
+    store.writeBrief(cwd, id, build(cwd, { id, name: a.name ?? found?.name, agent: loc.agent, parent, sk: skeleton(r.turns, { root: r.cwd }), stateCwd }));
     store.register(cwd, { id, name: a.name, agent: loc.agent, parent: parent?.id, sessionId, sourcePath: loc.path });
     store.update(cwd, id, { sourceOffset: r.lines });
     for (const s of r.subagents) if (!store.resolve(cwd, s.id)) store.register(cwd, { id: s.id, agent: loc.agent, parent: id, sessionId: s.id, sourcePath: s.path });
@@ -133,6 +133,7 @@ COMMANDS.gist = COMMANDS.show;
 // the cheap model reads the whole session once and fills it.
 COMMANDS.takeover = async (cwd, a, args) => {
   if (!store.exists(cwd)) throw new Error('not initialised; run `baton init`');
+  a = { ...a, agent: a.agent ?? hostAgent() }; // the taking-over agent, for the switch block as well as the continuation
   const [agent, ref] = AGENTS.includes(args[0]) && args[1] ? [args[0], args[1]] : [undefined, args[0]];
   if (!ref) throw new Error('usage: baton takeover [claude|codex] <brief | session id | name | last> [--name n] [--distill]');
   let e = agent ? null : store.resolve(cwd, ref);
@@ -154,8 +155,8 @@ COMMANDS.takeover = async (cwd, a, args) => {
   } else if (started) {
     return { out: `${store.briefPath(cwd, e.id)}\nbrief started from ${what}: fill the <!-- fill --> sections from its ## Extract (then delete Extract), or rerun with --distill to have the cheap model read the whole session; then run \`baton takeover ${e.id}\` again`, code: 1 };
   }
+  const c = COMMANDS.check(cwd, a, [e.id]); // stamps ## Check, so show it after: the brief printed is the brief on disk
   const shown = COMMANDS.show(cwd, a, [e.id]).out;
-  const c = COMMANDS.check(cwd, a, [e.id]);
   if (c.code) return { out: `${shown}\n--- check ---\n${c.out}`, code: c.code };
   // The continuation belongs to the session running takeover (write binds it when the agent exposes its id).
   const cont = COMMANDS.write(cwd, { name: a.name, agent: a.agent, model: a.model, parent: e.id }).out;
