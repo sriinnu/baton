@@ -5,6 +5,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ## [Unreleased]
 
+### Added
+- `PRIVACY.md`: what baton reads, writes and sends (no telemetry, no server). The agent-baton manifest links it as `privacyPolicyUrl` for the Claude plugin directory, and a test keeps the link pointing at a real file.
+
 ## [0.3.1] - 2026-11-20
 
 baton is now a Codex plugin, and the Claude directory build is in.

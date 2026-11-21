@@ -18,5 +18,6 @@
     "codex",
     "session",
     "model-switch"
-  ]
+  ],
+  "privacyPolicyUrl": "https://github.com/sriinnu/baton/blob/master/PRIVACY.md"
 }

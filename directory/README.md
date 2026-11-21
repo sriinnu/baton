@@ -20,4 +20,6 @@ These skills run the `baton` command. Install the [`@sriinnu/baton`](https://www
 - API keys, tokens and private keys are redacted before anything is written or sent to a model.
 - The CLI makes no network calls of its own. Only `baton sync` and `takeover --distill` call a model, through your own `claude` or `codex` CLI and that CLI's account.
 
+Privacy policy: https://github.com/sriinnu/baton/blob/master/PRIVACY.md
+
 Source, docs and issues: https://github.com/sriinnu/baton · Licence: MIT (see `LICENSE`).

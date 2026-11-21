@@ -234,10 +234,11 @@ All worktrees of a repo share the main checkout's `.baton/` (a fresh worktree ha
 - Transcripts are untrusted data: never executed. API keys, tokens and private keys are redacted before anything is written or sent to a model.
 - The model call runs with `BATON_SYNC=1`, so your own agent hooks can recognise and skip it.
 - `.baton/` is ignored through `.git/info/exclude`, so `init` never edits your tracked `.gitignore`. To share briefs, commit them deliberately (`git add -f .baton/`).
+- No telemetry and no server: what baton reads, writes and sends is in [PRIVACY.md](PRIVACY.md). Security reports: [SECURITY.md](SECURITY.md).
 
 ## Status
 
-v0.3.1 on npm (`@sriinnu/baton`). Session readers: Claude Code (`~/.claude/projects`), Codex (`~/.codex/sessions`), generic `--path`. Another agent is a ~30-line reader in `plugin/src/readers/`. Covered by 75 tests against fixture transcripts and a fake model, plus `baton doctor` against real sessions. Live-tested: Claude Code ↔ Codex handover and takeover, and `--distill` with `claude -p --model haiku` on a real 2 MB Codex session; `codex exec` as the runner has not been exercised yet.
+v0.3.1 on npm (`@sriinnu/baton`). Session readers: Claude Code (`~/.claude/projects`), Codex (`~/.codex/sessions`), generic `--path`. Another agent is a ~30-line reader in `plugin/src/readers/`. Covered by 76 tests against fixture transcripts and a fake model, plus `baton doctor` against real sessions. Live-tested: Claude Code ↔ Codex handover and takeover, and `--distill` with `claude -p --model haiku` on a real 2 MB Codex session; `codex exec` as the runner has not been exercised yet.
 
 ## Playground
 

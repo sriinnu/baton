@@ -20,6 +20,7 @@ export const NAME = 'agent-baton';
 export const DIR = 'directory';
 const SKILLS = ['handover', 'takeover', 'switch'];
 const NPM = 'https://www.npmjs.com/package/@sriinnu/baton';
+export const PRIVACY = 'https://github.com/sriinnu/baton/blob/master/PRIVACY.md'; // the directory's privacy-policy field
 
 // The bundled-CLI sentence in each skill, swapped for the npm CLI.
 const BUNDLED = /^`baton` below means `node "\$\{CLAUDE_PLUGIN_ROOT\}\/cli\/baton\.js"`.*$/m;
@@ -38,6 +39,7 @@ function manifest() {
     version: p.version,
     description: 'Pass work between AI coding agents through short, git-checked handover briefs. Skills for the baton CLI (npm @sriinnu/baton, Node 20+).',
     author: p.author, homepage: p.homepage, repository: p.repository, license: p.license, keywords: p.keywords,
+    privacyPolicyUrl: PRIVACY,
   }, null, 2) + '\n';
 }
 
@@ -62,6 +64,8 @@ These skills run the \`baton\` command. Install the [\`@sriinnu/baton\`](${NPM})
 - It writes briefs to \`.baton/\` in your repo, which \`baton init\` ignores through \`.git/info/exclude\`.
 - API keys, tokens and private keys are redacted before anything is written or sent to a model.
 - The CLI makes no network calls of its own. Only \`baton sync\` and \`takeover --distill\` call a model, through your own \`claude\` or \`codex\` CLI and that CLI's account.
+
+Privacy policy: ${PRIVACY}
 
 Source, docs and issues: https://github.com/sriinnu/baton · Licence: MIT (see \`LICENSE\`).
 `;

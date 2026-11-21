@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { expected, DIR, NAME } from '../scripts/build-directory.mjs';
+import { expected, DIR, NAME, PRIVACY } from '../scripts/build-directory.mjs';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dir = path.join(root, DIR);
@@ -39,4 +39,11 @@ test('the icon is a square PNG of 512-2048 px under 2 MB', () => {
   assert.equal(b.subarray(1, 4).toString(), 'PNG');
   const w = b.readUInt32BE(16), h = b.readUInt32BE(20);
   assert.equal(w, h); assert.ok(w >= 512 && w <= 2048, `${w}px`); assert.ok(b.length < 2 * 1024 * 1024);
+});
+
+test('the privacy policy the directory links to is a real file on master, and the manifest carries it', () => {
+  const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const file = PRIVACY.match(/\/blob\/master\/(.+)$/)?.[1];
+  assert.ok(file && fs.existsSync(path.join(root, file)), `${PRIVACY} must name a file in this repo`);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(root, DIR, '.claude-plugin/plugin.json'), 'utf8')).privacyPolicyUrl, PRIVACY);
 });
