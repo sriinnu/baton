@@ -72,7 +72,7 @@ export async function sync(cwd, ref, { full = false } = {}) {
     if (!r.turns.length) return { updated: false, reason: 'nothing new' };
     const parent = e.parent ? store.resolve(cwd, e.parent) : null;
     const stateCwd = r.cwd && fs.existsSync(r.cwd) ? r.cwd : cwd;
-    let current = existing ?? build(cwd, { id: e.id, name: e.name, agent: e.agent, parent, sk: skeleton(r.turns), stateCwd });
+    let current = existing ?? build(cwd, { id: e.id, name: e.name, agent: e.agent, parent, sk: skeleton(r.turns, { root: r.cwd }), stateCwd });
     const cur = parseBrief(current);
     const missionFilled = !hasFillMarkers(cur.sections.Mission || '');
     const sections = { ...cur.sections };

@@ -99,7 +99,7 @@ function detect(t) {
 function render() {
   const raw = $('#in').value, agent = detect(raw);
   const r = !raw.trim() ? { turns: [] } : agent === 'codex' ? parseCodex(raw) : agent === 'claude' ? parseClaude(raw) : { turns: [{ role: 'user', text: raw }] };
-  const sk = skeleton(r.turns), mission = $('#mission').value.trim(), task = $('#task').value.trim() || '(describe the subtask)';
+  const sk = skeleton(r.turns, { root: r.cwd }), mission = $('#mission').value.trim(), task = $('#task').value.trim() || '(describe the subtask)';
   const sample = Object.keys(SAMPLES).find((k) => SAMPLES[k] === raw), ex = sample && $('#filled').checked ? EXAMPLES[sample] : null;
   $('#filled-row').hidden = !sample;
   const state = ex ? ex.state : 'branch: main\nhead: (measured from git by the real CLI)\ndirty: none';

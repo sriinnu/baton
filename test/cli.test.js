@@ -87,6 +87,20 @@ test('takeover prints a switch block: previous vs new model/provider, tokens', (
   assert.match(u.out, /to:   unknown \(the taking-over agent should pass --model/);
 });
 
+test('takeover names the host agent in the switch block when --agent is not given', () => {
+  const { dir } = setup();
+  baton(dir, ['write', '--id', 'old', '--name', 'old', '--agent', 'claude', '--model', 'claude-opus-5-5']);
+  const f = `${dir}/.baton/briefs/old.md`;
+  fs.writeFileSync(f, fs.readFileSync(f, 'utf8').replace(/<!-- fill[^\n]*/g, 'x'));
+  const t = baton(dir, ['takeover', 'old', '--model', 'gpt-6.1-sol'], { CODEX_THREAD_ID: '019e0000-cafe-7000-8000-00000000000b' });
+  assert.equal(t.code, 0, t.err);
+  assert.match(t.out, /\nto:   OpenAI · gpt-6\.1-sol \(codex\)\n/);
+  // One brief, one size: the tokens line and the switch block measure the same file (check stamps it first).
+  const sizes = [...t.out.matchAll(/brief ≈ (\d+)/g)].map((m) => m[1]);
+  assert.equal(sizes.length, 2, t.out);
+  assert.equal(sizes[0], sizes[1], t.out);
+});
+
 test('handover records the host agent from its env, so a shared skill needs no --agent; an explicit --agent wins', () => {
   const { dir } = repo();
   baton(dir, ['init']);

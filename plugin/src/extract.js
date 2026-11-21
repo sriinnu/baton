@@ -23,13 +23,21 @@ const errLine = (s, n) => {
   const room = n - first.length - 3;
   return `${first} … ${f.slice(f.length - room)}`;
 };
+// A file under the session's root is shown relative to it: shorter, and no home path (with its
+// username) in a brief that gets pasted around. Prefix match on a separator boundary, so
+// /repo-old is not inside /repo. Pure string work: the playground runs this in a browser.
+const relTo = (root) => {
+  const r = root && root.replace(/[\\/]+$/, '');
+  return (f) => (r && f.length > r.length + 1 && f.startsWith(r) && /[\\/]/.test(f[r.length]) ? f.slice(r.length + 1) : f);
+};
 const SHELL = new Set(['Bash', 'REPL', 'exec_command', 'shell']);
 
-export function skeleton(turns) {
+export function skeleton(turns, { root } = {}) {
+  const rel = relTo(root);
   const users = turns.filter((t) => t.role === 'user');
   return {
     firstGoal: users[0] ? cut(users[0].text, 500) : '',
-    files: uniq(turns.flatMap((t) => t.files || [])).map((f) => flatLine(f)),
+    files: uniq(turns.flatMap((t) => t.files || []).map(rel)).map((f) => flatLine(f)),
     commands: turns.filter((t) => SHELL.has(t.tool)).map((t) => cmdLine(t.text, 200)).slice(-30),
     errors: uniq(turns.filter((t) => t.tool === 'result' && /\b(error|failed|exception|traceback)\b/i.test(t.text)).map((t) => errLine(t.text, 300))).slice(0, 10),
     lastUser: users.slice(-5).map((t) => cut(t.text, 500)),
