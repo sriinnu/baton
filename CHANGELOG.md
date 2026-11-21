@@ -7,6 +7,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ### Added
 - `PRIVACY.md`: what baton reads, writes and sends (no telemetry, no server). The agent-baton manifest links it as `privacyPolicyUrl` for the Claude plugin directory, and a test keeps the link pointing at a real file.
+- `TERMS.md`, and the Codex manifest's directory metadata for OpenAI: a subtitle within 30 characters, website, support, privacy and terms URLs, and listing text that doesn't name other AI products (OpenAI rejects that). A test enforces all three.
 
 ## [0.3.1] - 2026-11-20
 

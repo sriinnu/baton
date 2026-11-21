@@ -26,3 +26,16 @@ test('the Codex marketplace lists the plugin folder with the fields Codex requir
   assert.ok(fs.existsSync(path.join(root, p.source.path, '.codex-plugin/plugin.json')));
   assert.ok(p.policy.installation && p.policy.authentication && p.category);
 });
+
+test("the Codex manifest meets OpenAI's directory metadata rules", () => {
+  const x = json('plugin/.codex-plugin/plugin.json'), i = x.interface;
+  assert.ok(i.shortDescription.length <= 30, `shortDescription is ${i.shortDescription.length} chars; OpenAI allows 30`);
+  for (const k of ['websiteURL', 'supportURL', 'privacyPolicyURL', 'termsOfServiceURL']) assert.match(i[k] ?? '', /^https:\/\//, k);
+  for (const k of ['privacyPolicyURL', 'termsOfServiceURL']) { // policy pages must exist on master
+    const f = i[k].match(/\/blob\/master\/(.+)$/)?.[1];
+    assert.ok(f && fs.existsSync(path.join(root, f)), `${k} names a missing file`);
+  }
+  // OpenAI rejects listings whose name or description reference another AI assistant, model or platform.
+  const listing = [x.name, x.description, i.displayName, i.shortDescription, i.longDescription, ...i.defaultPrompt].join('\n');
+  assert.doesNotMatch(listing, /claude|anthropic|chatgpt|openai|\bgpt|gemini|copilot|cursor|sonnet|opus\b|codex/i);
+});
